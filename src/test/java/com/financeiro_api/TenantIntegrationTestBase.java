@@ -6,12 +6,14 @@ import com.financeiro_api.Enterprises.repository.EnterpriseRepository;
 import com.financeiro_api.Users.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
 import java.util.Map;
+import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
@@ -31,6 +33,9 @@ public abstract class TenantIntegrationTestBase extends IntegrationTestBase {
 
     @Autowired
     protected EnterpriseRepository enterpriseRepository;
+
+    @Autowired
+    protected JdbcTemplate jdbcTemplate;
 
     protected MockMvc mvc;
 
@@ -93,13 +98,23 @@ public abstract class TenantIntegrationTestBase extends IntegrationTestBase {
     }
 
     protected void limparUsuarioEEmpresa(String email, String cnpj) {
-        userRepository.findByEmail(email).ifPresent(u -> {
-            userRepository.delete(u);
-        });
         enterpriseRepository.findByCnpj(cnpj).ifPresent(e -> {
-            userRepository.findAllByEnterprise_IdOrderByNameAsc(e.getId())
-                    .forEach(userRepository::delete);
+            UUID id = e.getId();
+            // respeita ordem das FKs: filhos antes dos pais
+            jdbcTemplate.update("DELETE FROM extrato        WHERE enterprise_id = ?", id);
+            jdbcTemplate.update("DELETE FROM previsao       WHERE enterprise_id = ?", id);
+            jdbcTemplate.update("DELETE FROM saldo_anterior WHERE enterprise_id = ?", id);
+            jdbcTemplate.update("DELETE FROM conta_bancaria WHERE enterprise_id = ?", id);
+            jdbcTemplate.update("DELETE FROM categoria      WHERE enterprise_id = ?", id);
+            jdbcTemplate.update("DELETE FROM audit_logs     WHERE enterprise_id = ?", id);
+            // refresh_tokens tem ON DELETE CASCADE em user_id, removidos junto com users
+            jdbcTemplate.update("DELETE FROM users          WHERE enterprise_id = ?", id);
             enterpriseRepository.delete(e);
+        });
+        // limpa usuário órfão (sem empresa) se existir
+        userRepository.findByEmail(email).ifPresent(u -> {
+            jdbcTemplate.update("DELETE FROM refresh_tokens WHERE user_id = ?", u.getId());
+            userRepository.delete(u);
         });
     }
 }
