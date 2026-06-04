@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -36,6 +37,7 @@ public class EmailService {
         }
     }
 
+    @Async
     public void notificarNovaEmpresa(String empresaNome, String empresaCnpj, String responsavelEmail) {
         if (smtpHost == null || smtpHost.isBlank()) {
             log.info("=== NOVA EMPRESA CADASTRADA (SMTP not configured) ===");
@@ -64,6 +66,7 @@ public class EmailService {
         }
     }
 
+    @Async
     public void enviarResetSenha(String destinatario, String token) {
         String link = appUrl + "/resetar-senha?token=" + token;
 
@@ -98,6 +101,7 @@ public class EmailService {
         }
     }
 
+    @Async
     public void enviarVerificacaoEmail(String destinatario, String token) {
         String link = appUrl + "/verificar-email?token=" + token;
 
