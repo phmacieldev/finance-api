@@ -1,0 +1,78 @@
+package com.financeiro_api.shared;
+
+import com.financeiro_api.shared.dto.ErroResponse;
+import com.financeiro_api.shared.exception.AcessoNegadoException;
+import com.financeiro_api.shared.exception.ConflitoException;
+import com.financeiro_api.shared.exception.RecursoNaoEncontradoException;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+
+import java.util.stream.Collectors;
+
+@RestControllerAdvice
+public class ApiExceptionHandler {
+
+    @ExceptionHandler(RecursoNaoEncontradoException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ErroResponse naoEncontrado(RecursoNaoEncontradoException ex) {
+        return new ErroResponse(404, ex.getMessage());
+    }
+
+    @ExceptionHandler(ConflitoException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ErroResponse conflito(ConflitoException ex) {
+        return new ErroResponse(409, ex.getMessage());
+    }
+
+    @ExceptionHandler(AcessoNegadoException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ErroResponse acessoNegado(AcessoNegadoException ex) {
+        return new ErroResponse(403, ex.getMessage());
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
+    public ErroResponse validacao(MethodArgumentNotValidException ex) {
+        String campos = ex.getBindingResult().getFieldErrors().stream()
+                .map(FieldError::getDefaultMessage)
+                .collect(Collectors.joining("; "));
+        return new ErroResponse(422, "Dados inválidos: " + campos);
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    @ResponseStatus(HttpStatus.PAYLOAD_TOO_LARGE)
+    public ErroResponse arquivoGrande(MaxUploadSizeExceededException ex) {
+        return new ErroResponse(413, "Arquivo excede o tamanho máximo permitido (10MB)");
+    }
+
+    @ExceptionHandler(BadCredentialsException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ErroResponse credenciaisInvalidas(BadCredentialsException ex) {
+        return new ErroResponse(401, ex.getMessage());
+    }
+
+    @ExceptionHandler(DisabledException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ErroResponse contaDesabilitada(DisabledException ex) {
+        return new ErroResponse(403, ex.getMessage());
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErroResponse argumentoInvalido(IllegalArgumentException ex) {
+        return new ErroResponse(400, ex.getMessage());
+    }
+
+    @ExceptionHandler(Exception.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public ErroResponse erroInterno(Exception ex) {
+        return new ErroResponse(500, "Erro interno do servidor");
+    }
+}

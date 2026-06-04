@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: financeiro-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: JWT_EXPIRATION
+        value: 86400000
+      # As variáveis abaixo devem ser configuradas manualmente no dashboard do Render:
+      # DB_URL      — connection string do Supabase (porta 5432, com ?sslmode=require)
+      # DB_USER     — usuário do banco
+      # DB_PASS     — senha do banco
+      # JWT_SECRET  — string aleatória com mínimo 48 chars (use openssl rand -hex 64)
+      # CORS_ORIGINS — URL do frontend no Vercel (ex: https://financeiro.vercel.app)
+      # APP_URL     — mesma URL do frontend (para links nos emails)
+      # SMTP_HOST   — servidor SMTP (ex: smtp.gmail.com)
+      # SMTP_PORT   — porta SMTP (geralmente 587)
+      # SMTP_USER   — email/usuário SMTP
+      # SMTP_PASS   — senha SMTP ou App Password
+      # PLATFORM_ADMIN_EMAIL    — email do admin da plataforma
+      # PLATFORM_ADMIN_PASSWORD — senha forte do admin
