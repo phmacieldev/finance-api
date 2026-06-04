@@ -14,7 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ContaBancariaIntegrationTest extends TenantIntegrationTestBase {
 
     static final String EMAIL = "contas.test@teste.com";
-    static final String CNPJ  = "17983686000117";
+    static final String CNPJ  = "22444999000109";
     static final String PASS  = "senha123";
     static final String BASE  = "/api/v1/contas-bancarias";
 

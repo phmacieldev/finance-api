@@ -60,15 +60,17 @@ public abstract class TenantIntegrationTestBase extends IntegrationTestBase {
                         "password", password
                 ))));
 
-        // 2. verificar email direto no banco
-        var user = userRepository.findByEmail(email).orElseThrow();
+        // 2. verificar email e aprovar empresa direto no banco
+        var user = userRepository.findByEmailWithEnterprise(email)
+                .orElseThrow(() -> new IllegalStateException(
+                        "Registro falhou — verifique CNPJ e email. email=" + email + " cnpj=" + cnpj));
+
         user.setEmailVerificado(true);
         user.setTokenVerificacao(null);
         user.setTokenVerificacaoExpiracao(null);
         userRepository.save(user);
 
-        // 3. aprovar empresa
-        var enterprise = enterpriseRepository.findByCnpj(cnpj).orElseThrow();
+        var enterprise = user.getEnterprise();
         enterprise.setStatus(EnterpriseStatus.ATIVA);
         enterpriseRepository.save(enterprise);
 

@@ -14,7 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class CategoriaIntegrationTest extends TenantIntegrationTestBase {
 
     static final String EMAIL = "categorias.test@teste.com";
-    static final String CNPJ  = "33382553000199";
+    static final String CNPJ  = "11333888000109";
     static final String PASS  = "senha123";
     static final String BASE  = "/api/v1/categorias";
 

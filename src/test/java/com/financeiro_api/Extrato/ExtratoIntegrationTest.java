@@ -15,7 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ExtratoIntegrationTest extends TenantIntegrationTestBase {
 
     static final String EMAIL = "extratos.test@teste.com";
-    static final String CNPJ  = "71379110000189";
+    static final String CNPJ  = "33555000000107";
     static final String PASS  = "senha123";
     static final String BASE  = "/api/v1/extratos";
 
