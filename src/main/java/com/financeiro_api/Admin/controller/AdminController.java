@@ -83,4 +83,11 @@ public class AdminController {
                                @PathVariable UUID userId) {
         service.removerUsuarioEmpresa(enterpriseId, userId);
     }
+
+    @Operation(summary = "Deletar empresa e todos os seus dados")
+    @DeleteMapping("/empresas/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deletarEmpresa(@PathVariable UUID id) {
+        service.deletarEmpresa(id);
+    }
 }
