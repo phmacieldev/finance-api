@@ -1,5 +1,7 @@
 package com.financeiro_api.Extrato.service;
 
+import com.financeiro_api.Audit.domain.AuditAction;
+import com.financeiro_api.Audit.service.AuditLogService;
 import com.financeiro_api.Categorias.domain.Categoria;
 import com.financeiro_api.Categorias.domain.TipoCategoria;
 import com.financeiro_api.Categorias.service.CategoriaService;
@@ -26,10 +28,13 @@ public class ExtratoService {
 
     private final ExtratoRepository repository;
     private final CategoriaService categoriaService;
+    private final AuditLogService auditLogService;
 
-    public ExtratoService(ExtratoRepository repository, CategoriaService categoriaService) {
+    public ExtratoService(ExtratoRepository repository, CategoriaService categoriaService,
+                          AuditLogService auditLogService) {
         this.repository = repository;
         this.categoriaService = categoriaService;
+        this.auditLogService = auditLogService;
     }
 
     public List<ExtratoResponseDTO> listarPorMes(int mes, int ano) {
@@ -95,10 +100,12 @@ public class ExtratoService {
         Extrato extrato = repository.findByEnterpriseIdAndId(TenantContext.get(), id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Extrato não encontrado: " + id));
         repository.delete(extrato);
+        auditLogService.log(AuditAction.EXTRATO_DELETED, "Extrato", id.toString());
     }
 
     @Transactional
     public void cancelarLote(UUID batchId) {
         repository.deleteByEnterpriseIdAndImportBatchId(TenantContext.get(), batchId);
+        auditLogService.log(AuditAction.EXTRATO_BATCH_DELETED, "Extrato", batchId.toString());
     }
 }

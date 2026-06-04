@@ -1,5 +1,7 @@
 package com.financeiro_api.Categorias.service;
 
+import com.financeiro_api.Audit.domain.AuditAction;
+import com.financeiro_api.Audit.service.AuditLogService;
 import com.financeiro_api.Categorias.domain.Categoria;
 import com.financeiro_api.Categorias.domain.TipoCategoria;
 import com.financeiro_api.Categorias.dto.CategoriaCreateDTO;
@@ -17,9 +19,11 @@ import java.util.UUID;
 public class CategoriaService {
 
     private final CategoriaRepository repository;
+    private final AuditLogService auditLogService;
 
-    public CategoriaService(CategoriaRepository repository) {
+    public CategoriaService(CategoriaRepository repository, AuditLogService auditLogService) {
         this.repository = repository;
+        this.auditLogService = auditLogService;
     }
 
     public List<CategoriaResponseDTO> listar() {
@@ -43,13 +47,16 @@ public class CategoriaService {
                 .tipo(dto.tipo())
                 .dreCategoria(dto.dreCategoria())
                 .build();
-        return CategoriaResponseDTO.from(repository.save(categoria));
+        Categoria saved = repository.save(categoria);
+        auditLogService.log(AuditAction.CATEGORIA_CREATED, "Categoria", saved.getId().toString());
+        return CategoriaResponseDTO.from(saved);
     }
 
     public void deletar(UUID id) {
         Categoria c = repository.findByEnterpriseIdAndId(TenantContext.get(), id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Categoria não encontrada: " + id));
         repository.delete(c);
+        auditLogService.log(AuditAction.CATEGORIA_DELETED, "Categoria", id.toString());
     }
 
     public Categoria buscarPorId(UUID id) {

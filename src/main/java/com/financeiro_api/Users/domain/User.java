@@ -46,6 +46,9 @@ public class User {
     @Column(name = "token_verificacao", length = 64)
     private String tokenVerificacao;
 
+    @Column(name = "token_verificacao_expiracao")
+    private LocalDateTime tokenVerificacaoExpiracao;
+
     @Column(name = "token_reset_senha", length = 64)
     private String tokenResetSenha;
 

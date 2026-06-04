@@ -110,13 +110,55 @@ class AuthIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
+    void register_senhaCurta_retorna400() throws Exception {
+        mvc.perform(post(BASE + "/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "enterpriseName", "Empresa Teste",
+                                "cnpj", TEST_CNPJ,
+                                "userName", "Usuário Teste",
+                                "email", TEST_EMAIL,
+                                "password", "abc1"
+                        ))))
+                .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
+    void register_senhaSemNumero_retorna400() throws Exception {
+        mvc.perform(post(BASE + "/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "enterpriseName", "Empresa Teste",
+                                "cnpj", TEST_CNPJ,
+                                "userName", "Usuário Teste",
+                                "email", TEST_EMAIL,
+                                "password", "senhasemnumero"
+                        ))))
+                .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
+    void register_cnpjInvalido_retorna422() throws Exception {
+        mvc.perform(post(BASE + "/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "enterpriseName", "Empresa Teste",
+                                "cnpj", "11111111111111",
+                                "userName", "Usuário Teste",
+                                "email", TEST_EMAIL,
+                                "password", "senha123"
+                        ))))
+                .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
     void register_emailDuplicado_retorna409() throws Exception {
         registerTestUser();
         mvc.perform(post(BASE + "/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of(
                                 "enterpriseName", "Outra Empresa",
-                                "cnpj", "99888777000166",
+                                "cnpj", "99888777000100",
                                 "userName", "Maria",
                                 "email", TEST_EMAIL,
                                 "password", "senha123"
@@ -229,5 +271,13 @@ class AuthIntegrationTest extends IntegrationTestBase {
         mvc.perform(get("/api/v1/admin/empresas")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk());
+    }
+
+    // ── DELETE /me ────────────────────────────────────────────────────────────
+
+    @Test
+    void deletarConta_semAutenticacao_retorna401ou403() throws Exception {
+        mvc.perform(delete("/api/v1/me"))
+                .andExpect(status().is4xxClientError());
     }
 }

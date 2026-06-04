@@ -1,5 +1,6 @@
 package com.financeiro_api.Auth.service;
 
+import com.financeiro_api.shared.LogMask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -41,7 +42,7 @@ public class EmailService {
     public void notificarNovaEmpresa(String empresaNome, String empresaCnpj, String responsavelEmail) {
         if (smtpHost == null || smtpHost.isBlank()) {
             log.info("=== NOVA EMPRESA CADASTRADA (SMTP not configured) ===");
-            log.info("Empresa: {} | CNPJ: {} | Responsável: {}", empresaNome, empresaCnpj, responsavelEmail);
+            log.info("Empresa: {} | CNPJ: {} | Responsável: {}", empresaNome, LogMask.cnpj(empresaCnpj), LogMask.email(responsavelEmail));
             log.info("====================================================");
             return;
         }
@@ -72,8 +73,7 @@ public class EmailService {
 
         if (smtpHost == null || smtpHost.isBlank()) {
             log.info("=== PASSWORD RESET (SMTP not configured) ===");
-            log.info("To: {}", destinatario);
-            log.info("Reset link: {}", link);
+            log.info("To: {} | Token prefix: {}", LogMask.email(destinatario), LogMask.token(token));
             log.info("============================================");
             return;
         }
@@ -96,8 +96,7 @@ public class EmailService {
                     """.formatted(link));
             mailSender.send(msg);
         } catch (Exception e) {
-            log.warn("Falha ao enviar email de reset para {}: {}", destinatario, e.getMessage());
-            log.info("Reset link (fallback): {}", link);
+            log.warn("Falha ao enviar email de reset para {}: {}", LogMask.email(destinatario), e.getMessage());
         }
     }
 
@@ -108,8 +107,7 @@ public class EmailService {
         if (smtpHost == null || smtpHost.isBlank()) {
             // SMTP not configured — log the link so developers can test
             log.info("=== EMAIL VERIFICATION (SMTP not configured) ===");
-            log.info("To: {}", destinatario);
-            log.info("Verification link: {}", link);
+            log.info("To: {} | Token prefix: {}", LogMask.email(destinatario), LogMask.token(token));
             log.info("================================================");
             return;
         }
@@ -132,8 +130,7 @@ public class EmailService {
                     """.formatted(link));
             mailSender.send(msg);
         } catch (Exception e) {
-            log.warn("Falha ao enviar email de verificação para {}: {}", destinatario, e.getMessage());
-            log.info("Verification link (fallback): {}", link);
+            log.warn("Falha ao enviar email de verificação para {}: {}", LogMask.email(destinatario), e.getMessage());
         }
     }
 }

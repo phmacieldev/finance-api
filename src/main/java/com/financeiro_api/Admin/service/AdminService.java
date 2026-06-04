@@ -1,5 +1,7 @@
 package com.financeiro_api.Admin.service;
 
+import com.financeiro_api.Audit.domain.AuditAction;
+import com.financeiro_api.Audit.service.AuditLogService;
 import com.financeiro_api.Admin.dto.AdminEnterpriseDTO;
 import com.financeiro_api.Admin.dto.AdminUserDTO;
 import com.financeiro_api.Enterprises.domain.Enterprise;
@@ -25,13 +27,16 @@ public class AdminService {
     private final EnterpriseRepository enterpriseRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuditLogService auditLogService;
 
     public AdminService(EnterpriseRepository enterpriseRepository,
                         UserRepository userRepository,
-                        PasswordEncoder passwordEncoder) {
+                        PasswordEncoder passwordEncoder,
+                        AuditLogService auditLogService) {
         this.enterpriseRepository = enterpriseRepository;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.auditLogService = auditLogService;
     }
 
     public List<AdminEnterpriseDTO> listarEmpresas(String status) {
@@ -52,7 +57,9 @@ public class AdminService {
         Enterprise e = enterpriseRepository.findById(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Empresa não encontrada: " + id));
         e.setStatus(EnterpriseStatus.ATIVA);
-        return AdminEnterpriseDTO.from(enterpriseRepository.save(e));
+        AdminEnterpriseDTO result = AdminEnterpriseDTO.from(enterpriseRepository.save(e));
+        auditLogService.log(AuditAction.ENTERPRISE_APPROVED, "Enterprise", id.toString());
+        return result;
     }
 
     @Transactional
@@ -60,7 +67,9 @@ public class AdminService {
         Enterprise e = enterpriseRepository.findById(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Empresa não encontrada: " + id));
         e.setStatus(EnterpriseStatus.BLOQUEADA);
-        return AdminEnterpriseDTO.from(enterpriseRepository.save(e));
+        AdminEnterpriseDTO result = AdminEnterpriseDTO.from(enterpriseRepository.save(e));
+        auditLogService.log(AuditAction.ENTERPRISE_REJECTED, "Enterprise", id.toString());
+        return result;
     }
 
     @Transactional
@@ -68,7 +77,9 @@ public class AdminService {
         Enterprise e = enterpriseRepository.findById(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Empresa não encontrada: " + id));
         e.setPlan(Plan.valueOf(plan.toUpperCase()));
-        return AdminEnterpriseDTO.from(enterpriseRepository.save(e));
+        AdminEnterpriseDTO result = AdminEnterpriseDTO.from(enterpriseRepository.save(e));
+        auditLogService.log(AuditAction.ENTERPRISE_PLAN_UPDATED, "Enterprise", id.toString());
+        return result;
     }
 
     @Transactional
@@ -87,7 +98,9 @@ public class AdminService {
                 .role(targetRole)
                 .emailVerificado(true)
                 .build();
-        return AdminUserDTO.from(userRepository.save(user));
+        AdminUserDTO result = AdminUserDTO.from(userRepository.save(user));
+        auditLogService.log(AuditAction.USER_CREATED, "User", result.id().toString());
+        return result;
     }
 
     public List<AdminUserDTO> listarUsuariosEmpresa(UUID enterpriseId) {
@@ -102,7 +115,9 @@ public class AdminService {
         User user = userRepository.findByIdAndEnterprise_Id(userId, enterpriseId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Usuário não encontrado"));
         user.setRole(Role.valueOf(role.toUpperCase()));
-        return AdminUserDTO.from(userRepository.save(user));
+        AdminUserDTO result = AdminUserDTO.from(userRepository.save(user));
+        auditLogService.log(AuditAction.USER_UPDATED, "User", userId.toString());
+        return result;
     }
 
     @Transactional
@@ -116,6 +131,7 @@ public class AdminService {
                 throw new AcessoNegadoException("Não é possível remover o único CEO da empresa");
             }
         }
+        auditLogService.log(AuditAction.USER_DELETED, "User", userId.toString());
         userRepository.delete(user);
     }
 }
