@@ -38,6 +38,7 @@ public class SecurityConfig {
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("PLATFORM_ADMIN")
+                        .requestMatchers("/api/v1/audit-logs/**").hasRole("PLATFORM_ADMIN")
                         .requestMatchers("/api/v1/me/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/dashboard/**").hasAnyRole("CEO", "OWNER", "USER")
                         .requestMatchers(HttpMethod.GET, "/api/v1/dre/**").hasAnyRole("CEO", "OWNER", "USER")
