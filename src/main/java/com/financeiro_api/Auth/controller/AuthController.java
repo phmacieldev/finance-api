@@ -75,4 +75,11 @@ public class AuthController {
     public TokenResponseDTO refresh(@RequestBody @Valid RefreshTokenRequestDTO dto) {
         return authService.refresh(dto.refreshToken());
     }
+
+    @Operation(summary = "Logout — revoga o refresh token ativo")
+    @PostMapping("/logout")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void logout(@RequestBody @Valid RefreshTokenRequestDTO dto) {
+        authService.logout(dto.refreshToken());
+    }
 }

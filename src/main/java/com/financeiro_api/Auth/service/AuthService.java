@@ -174,6 +174,12 @@ public class AuthService {
         return new TokenResponseDTO(jwt, newRt.getToken(), user.getEmail(), user.getRole().name());
     }
 
+    @Transactional
+    public void logout(String refreshTokenValue) {
+        refreshTokenService.revogarPorToken(refreshTokenValue);
+        auditLogService.log(AuditAction.USER_LOGOUT, "User", null);
+    }
+
     public void reenviarVerificacao(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new BadCredentialsException("Usuário não encontrado"));
