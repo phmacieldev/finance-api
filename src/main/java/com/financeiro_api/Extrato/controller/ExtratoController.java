@@ -7,6 +7,8 @@ import com.financeiro_api.Extrato.dto.ExtratoResponseDTO;
 import com.financeiro_api.Extrato.service.CsvImportService;
 import com.financeiro_api.Extrato.service.ExtratoService;
 import com.financeiro_api.Extrato.service.XlsxImportService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -20,6 +22,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
+@Tag(name = "Extratos", description = "Import CSV/XLSX, listagem paginada e classificação de lançamentos")
 @RestController
 @RequestMapping("/api/v1/extratos")
 public class ExtratoController {
@@ -36,6 +39,7 @@ public class ExtratoController {
         this.xlsxImportService = xlsxImportService;
     }
 
+    @Operation(summary = "Importar extrato (CSV ou XLSX — auto-detectado pelo nome do arquivo)")
     @PostMapping("/importar")
     @ResponseStatus(HttpStatus.CREATED)
     public ExtratoImportResultDTO importar(

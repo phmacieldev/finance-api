@@ -3,12 +3,15 @@ package com.financeiro_api.ContaBancaria.controller;
 import com.financeiro_api.ContaBancaria.dto.ContaBancariaCreateDTO;
 import com.financeiro_api.ContaBancaria.dto.ContaBancariaResponseDTO;
 import com.financeiro_api.ContaBancaria.service.ContaBancariaService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
 
+@Tag(name = "Contas Bancárias", description = "CRUD de contas correntes, poupança e investimento")
 @RestController
 @RequestMapping("/api/v1/contas-bancarias")
 public class ContaBancariaController {

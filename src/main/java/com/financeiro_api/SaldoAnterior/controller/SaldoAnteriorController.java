@@ -3,9 +3,12 @@ package com.financeiro_api.SaldoAnterior.controller;
 import com.financeiro_api.SaldoAnterior.dto.SaldoAnteriorDTO;
 import com.financeiro_api.SaldoAnterior.dto.SaldoAnteriorResponseDTO;
 import com.financeiro_api.SaldoAnterior.service.SaldoAnteriorService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
+@Tag(name = "Saldo Anterior", description = "Saldo inicial de cada mês para cálculo correto do fluxo de caixa")
 @RestController
 @RequestMapping("/api/v1/saldo-anterior")
 public class SaldoAnteriorController {

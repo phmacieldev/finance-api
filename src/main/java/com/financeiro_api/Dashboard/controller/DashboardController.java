@@ -2,10 +2,13 @@ package com.financeiro_api.Dashboard.controller;
 
 import com.financeiro_api.Dashboard.dto.DashboardDTO;
 import com.financeiro_api.Dashboard.service.DashboardService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 
+@Tag(name = "Dashboard", description = "Resumo financeiro do mês com totais, variações e alertas")
 @RestController
 @RequestMapping("/api/v1/dashboard")
 public class DashboardController {
@@ -16,6 +19,7 @@ public class DashboardController {
         this.service = service;
     }
 
+    @Operation(summary = "Calcular dashboard do mês (padrão: mês atual)")
     @GetMapping
     public DashboardDTO calcular(
             @RequestParam(defaultValue = "0") int mes,

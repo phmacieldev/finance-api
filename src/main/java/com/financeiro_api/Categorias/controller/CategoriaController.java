@@ -4,6 +4,8 @@ import com.financeiro_api.Categorias.domain.TipoCategoria;
 import com.financeiro_api.Categorias.dto.CategoriaCreateDTO;
 import com.financeiro_api.Categorias.dto.CategoriaResponseDTO;
 import com.financeiro_api.Categorias.service.CategoriaService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -11,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
+@Tag(name = "Categorias", description = "CRUD de categorias de receitas e despesas")
 @RestController
 @RequestMapping("/api/v1/categorias")
 public class CategoriaController {
@@ -21,6 +24,7 @@ public class CategoriaController {
         this.service = service;
     }
 
+    @Operation(summary = "Listar categorias (filtrável por tipo: RECEITA, DESPESA)")
     @GetMapping
     public List<CategoriaResponseDTO> listar(@RequestParam(required = false) TipoCategoria tipo) {
         if (tipo != null) return service.listarPorTipo(tipo);
