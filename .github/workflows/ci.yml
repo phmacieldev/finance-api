@@ -42,4 +42,6 @@ jobs:
         env:
           CI: "true"
           JWT_SECRET: ci-test-secret-must-be-at-least-48-characters-long
-          SPRING_PROFILES_ACTIVE: ci
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/financeiro_test
+          SPRING_DATASOURCE_USERNAME: ci_user
+          SPRING_DATASOURCE_PASSWORD: ci_pass
