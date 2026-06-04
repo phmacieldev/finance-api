@@ -2,6 +2,7 @@ package com.financeiro_api.Auth.service;
 
 import com.financeiro_api.Audit.domain.AuditAction;
 import com.financeiro_api.Audit.service.AuditLogService;
+import com.financeiro_api.Auth.domain.RefreshToken;
 import com.financeiro_api.Auth.dto.EsqueciSenhaDTO;
 import com.financeiro_api.Auth.dto.LoginDTO;
 import com.financeiro_api.Auth.dto.RegisterDTO;
@@ -33,19 +34,22 @@ public class AuthService {
     private final JwtService jwtService;
     private final EmailService emailService;
     private final AuditLogService auditLogService;
+    private final RefreshTokenService refreshTokenService;
 
     public AuthService(UserRepository userRepository,
                        EnterpriseRepository enterpriseRepository,
                        PasswordEncoder passwordEncoder,
                        JwtService jwtService,
                        EmailService emailService,
-                       AuditLogService auditLogService) {
+                       AuditLogService auditLogService,
+                       RefreshTokenService refreshTokenService) {
         this.userRepository = userRepository;
         this.enterpriseRepository = enterpriseRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.emailService = emailService;
         this.auditLogService = auditLogService;
+        this.refreshTokenService = refreshTokenService;
     }
 
     @Transactional
@@ -86,7 +90,7 @@ public class AuthService {
         TenantContext.setEmail(user.getEmail());
         auditLogService.log(AuditAction.USER_REGISTER, "User", user.getId().toString());
 
-        return new TokenResponseDTO(null, user.getEmail(), user.getRole().name());
+        return new TokenResponseDTO(user.getEmail(), user.getRole().name());
     }
 
     @Transactional
@@ -111,7 +115,8 @@ public class AuthService {
 
         String jwt = jwtService.gerarToken(user.getEmail(), user.getId(),
                 user.getEnterprise().getId(), user.getRole().name());
-        return new TokenResponseDTO(jwt, user.getEmail(), user.getRole().name());
+        RefreshToken rt = refreshTokenService.criar(user);
+        return new TokenResponseDTO(jwt, rt.getToken(), user.getEmail(), user.getRole().name());
     }
 
     public TokenResponseDTO login(LoginDTO dto) {
@@ -127,7 +132,8 @@ public class AuthService {
             TenantContext.setEmail(user.getEmail());
             auditLogService.log(AuditAction.USER_LOGIN, "User", user.getId().toString());
             String token = jwtService.gerarToken(user.getEmail(), user.getId(), null, user.getRole().name());
-            return new TokenResponseDTO(token, user.getEmail(), user.getRole().name());
+            RefreshToken rt = refreshTokenService.criar(user);
+            return new TokenResponseDTO(token, rt.getToken(), user.getEmail(), user.getRole().name());
         }
 
         if (!user.isEmailVerificado()) {
@@ -149,7 +155,23 @@ public class AuthService {
 
         String token = jwtService.gerarToken(user.getEmail(), user.getId(),
                 enterprise.getId(), user.getRole().name());
-        return new TokenResponseDTO(token, user.getEmail(), user.getRole().name());
+        RefreshToken rt = refreshTokenService.criar(user);
+        return new TokenResponseDTO(token, rt.getToken(), user.getEmail(), user.getRole().name());
+    }
+
+    @Transactional
+    public TokenResponseDTO refresh(String refreshTokenValue) {
+        User user = refreshTokenService.validarEObter(refreshTokenValue);
+
+        UUID enterpriseId = user.getEnterprise() != null ? user.getEnterprise().getId() : null;
+        String jwt = jwtService.gerarToken(user.getEmail(), user.getId(), enterpriseId, user.getRole().name());
+        RefreshToken newRt = refreshTokenService.criar(user);
+
+        TenantContext.setUserId(user.getId());
+        TenantContext.setEmail(user.getEmail());
+        auditLogService.log(AuditAction.USER_LOGIN, "User", user.getId().toString());
+
+        return new TokenResponseDTO(jwt, newRt.getToken(), user.getEmail(), user.getRole().name());
     }
 
     public void reenviarVerificacao(String email) {

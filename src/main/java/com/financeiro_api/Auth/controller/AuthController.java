@@ -2,6 +2,7 @@ package com.financeiro_api.Auth.controller;
 
 import com.financeiro_api.Auth.dto.EsqueciSenhaDTO;
 import com.financeiro_api.Auth.dto.LoginDTO;
+import com.financeiro_api.Auth.dto.RefreshTokenRequestDTO;
 import com.financeiro_api.Auth.dto.RegisterDTO;
 import com.financeiro_api.Auth.dto.ResetarSenhaDTO;
 import com.financeiro_api.Auth.dto.TokenResponseDTO;
@@ -52,5 +53,10 @@ public class AuthController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void resetarSenha(@RequestBody @Valid ResetarSenhaDTO dto) {
         authService.resetarSenha(dto);
+    }
+
+    @PostMapping("/refresh")
+    public TokenResponseDTO refresh(@RequestBody @Valid RefreshTokenRequestDTO dto) {
+        return authService.refresh(dto.refreshToken());
     }
 }
