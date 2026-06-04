@@ -23,8 +23,17 @@ public class EmailService {
     @Value("${app.platform.admin.email:admin@plataforma.com}")
     private String adminEmail;
 
+    @Value("${MAIL_FROM:${spring.mail.username:}}")
+    private String mailFrom;
+
     public EmailService(JavaMailSender mailSender) {
         this.mailSender = mailSender;
+    }
+
+    private void setFrom(SimpleMailMessage msg) {
+        if (mailFrom != null && !mailFrom.isBlank()) {
+            msg.setFrom(mailFrom);
+        }
     }
 
     public void notificarNovaEmpresa(String empresaNome, String empresaCnpj, String responsavelEmail) {
@@ -37,6 +46,7 @@ public class EmailService {
 
         try {
             SimpleMailMessage msg = new SimpleMailMessage();
+            setFrom(msg);
             msg.setTo(adminEmail);
             msg.setSubject("Nova empresa cadastrada — " + empresaNome);
             msg.setText("""
@@ -67,6 +77,7 @@ public class EmailService {
 
         try {
             SimpleMailMessage msg = new SimpleMailMessage();
+            setFrom(msg);
             msg.setTo(destinatario);
             msg.setSubject("Redefinição de senha — Financeiro SaaS");
             msg.setText("""
@@ -101,6 +112,7 @@ public class EmailService {
 
         try {
             SimpleMailMessage msg = new SimpleMailMessage();
+            setFrom(msg);
             msg.setTo(destinatario);
             msg.setSubject("Confirme seu e-mail — Financeiro SaaS");
             msg.setText("""
