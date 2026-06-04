@@ -11,9 +11,9 @@ import com.financeiro_api.Enterprises.repository.EnterpriseRepository;
 import com.financeiro_api.Users.domain.Role;
 import com.financeiro_api.Users.domain.User;
 import com.financeiro_api.Users.repository.UserRepository;
-import com.financeiro_api.shared.exception.AcessoNegadoException;
 import com.financeiro_api.shared.exception.ConflitoException;
 import com.financeiro_api.shared.exception.RecursoNaoEncontradoException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,15 +28,18 @@ public class AdminService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuditLogService auditLogService;
+    private final JdbcTemplate jdbc;
 
     public AdminService(EnterpriseRepository enterpriseRepository,
                         UserRepository userRepository,
                         PasswordEncoder passwordEncoder,
-                        AuditLogService auditLogService) {
+                        AuditLogService auditLogService,
+                        JdbcTemplate jdbc) {
         this.enterpriseRepository = enterpriseRepository;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.auditLogService = auditLogService;
+        this.jdbc = jdbc;
     }
 
     public List<AdminEnterpriseDTO> listarEmpresas(String status) {
@@ -124,14 +127,26 @@ public class AdminService {
     public void removerUsuarioEmpresa(UUID enterpriseId, UUID userId) {
         User user = userRepository.findByIdAndEnterprise_Id(userId, enterpriseId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Usuário não encontrado"));
-        if (user.getRole() == Role.CEO) {
-            long ceoCount = userRepository.findAllByEnterprise_IdOrderByNameAsc(enterpriseId)
-                    .stream().filter(u -> u.getRole() == Role.CEO).count();
-            if (ceoCount <= 1) {
-                throw new AcessoNegadoException("Não é possível remover o único CEO da empresa");
-            }
-        }
         auditLogService.log(AuditAction.USER_DELETED, "User", userId.toString());
         userRepository.delete(user);
+    }
+
+    @Transactional
+    public void deletarEmpresa(UUID id) {
+        enterpriseRepository.findById(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Empresa não encontrada: " + id));
+
+        String eid = id.toString();
+        jdbc.update("DELETE FROM extrato WHERE enterprise_id = ?::uuid", eid);
+        jdbc.update("DELETE FROM previsao WHERE enterprise_id = ?::uuid", eid);
+        jdbc.update("DELETE FROM saldo_anterior WHERE enterprise_id = ?::uuid", eid);
+        jdbc.update("DELETE FROM conta_bancaria WHERE enterprise_id = ?::uuid", eid);
+        jdbc.update("DELETE FROM categoria WHERE enterprise_id = ?::uuid", eid);
+        jdbc.update("DELETE FROM audit_logs WHERE enterprise_id = ?::uuid", eid);
+        // refresh_tokens tem ON DELETE CASCADE em user_id — auto-deletados com users
+        jdbc.update("DELETE FROM users WHERE enterprise_id = ?::uuid", eid);
+        jdbc.update("DELETE FROM enterprise WHERE id = ?::uuid", eid);
+
+        auditLogService.log(AuditAction.ENTERPRISE_DELETED, "Enterprise", eid);
     }
 }
