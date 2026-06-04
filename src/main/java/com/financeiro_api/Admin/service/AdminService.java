@@ -106,6 +106,24 @@ public class AdminService {
         return result;
     }
 
+    @Transactional
+    public AdminUserDTO criarAdmin(String name, String email, String password) {
+        if (userRepository.existsByEmail(email)) {
+            throw new ConflitoException("E-mail já está em uso: " + email);
+        }
+        User user = User.builder()
+                .enterprise(null)
+                .name(name.trim())
+                .email(email.trim().toLowerCase())
+                .password(passwordEncoder.encode(password))
+                .role(Role.PLATFORM_ADMIN)
+                .emailVerificado(true)
+                .build();
+        AdminUserDTO result = AdminUserDTO.from(userRepository.save(user));
+        auditLogService.log(AuditAction.USER_CREATED, "User", result.id().toString());
+        return result;
+    }
+
     public List<AdminUserDTO> listarUsuariosEmpresa(UUID enterpriseId) {
         enterpriseRepository.findById(enterpriseId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Empresa não encontrada: " + enterpriseId));

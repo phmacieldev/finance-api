@@ -84,6 +84,13 @@ public class AdminController {
         service.removerUsuarioEmpresa(enterpriseId, userId);
     }
 
+    @Operation(summary = "Criar um novo usuário PLATFORM_ADMIN")
+    @PostMapping("/plataforma/usuarios")
+    @ResponseStatus(HttpStatus.CREATED)
+    public AdminUserDTO criarAdmin(@RequestBody Map<String, String> body) {
+        return service.criarAdmin(body.get("name"), body.get("email"), body.get("password"));
+    }
+
     @Operation(summary = "Deletar empresa e todos os seus dados")
     @DeleteMapping("/empresas/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)

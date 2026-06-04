@@ -34,8 +34,8 @@ public class DreService {
         Map<UUID, Categoria> categorias = categoriaRepository.findAllByEnterpriseId(tenantId)
                 .stream().collect(Collectors.toMap(Categoria::getId, c -> c));
 
-        // Agrupa soma de valor absoluto por DreCategoria
         Map<DreCategoria, BigDecimal> somaPorDre = new EnumMap<>(DreCategoria.class);
+        Map<DreCategoria, Set<String>> nomesPorDre = new EnumMap<>(DreCategoria.class);
 
         for (Extrato e : extratos) {
             if (e.getCategoriaId() == null) continue;
@@ -44,6 +44,7 @@ public class DreService {
 
             BigDecimal valorAbs = e.getValor().abs();
             somaPorDre.merge(cat.getDreCategoria(), valorAbs, BigDecimal::add);
+            nomesPorDre.computeIfAbsent(cat.getDreCategoria(), k -> new LinkedHashSet<>()).add(cat.getName());
         }
 
         BigDecimal receitaBruta       = get(somaPorDre, DreCategoria.RECEITA_BRUTA);
@@ -62,25 +63,37 @@ public class DreService {
         BigDecimal lucroLiquido       = lair.subtract(impostos);
 
         List<DreLinhaDTO> linhas = List.of(
-                new DreLinhaDTO("(+) Receita Bruta",            receitaBruta,       false),
-                new DreLinhaDTO("(-) Deduções da Receita",       deducoesReceita,    false),
-                new DreLinhaDTO("(=) Receita Líquida",           receitaLiquida,     true),
-                new DreLinhaDTO("(-) Custo dos Produtos/Serv.",  cpv,                false),
-                new DreLinhaDTO("(=) Lucro Bruto",               lucroBruto,         true),
-                new DreLinhaDTO("(-) Despesas de Vendas",        despVendas,         false),
-                new DreLinhaDTO("(-) Despesas Administrativas",  despAdmin,          false),
-                new DreLinhaDTO("(=) EBITDA",                    ebitda,             true),
-                new DreLinhaDTO("(-) Despesas Financeiras",      despFinanceiras,    false),
-                new DreLinhaDTO("(+) Receitas Financeiras",      recFinanceiras,     false),
-                new DreLinhaDTO("(=) LAIR",                      lair,               true),
-                new DreLinhaDTO("(-) Impostos (IR/CSLL)",        impostos,           false),
-                new DreLinhaDTO("(=) Lucro Líquido",             lucroLiquido,       true)
+                linha("(+) Receita Bruta",            receitaBruta,    false, nomesPorDre, DreCategoria.RECEITA_BRUTA),
+                linha("(-) Deduções da Receita",      deducoesReceita, false, nomesPorDre, DreCategoria.DEDUCAO_RECEITA),
+                subtotal("(=) Receita Líquida",       receitaLiquida),
+                linha("(-) Custo dos Produtos/Serv.", cpv,             false, nomesPorDre, DreCategoria.CPV),
+                subtotal("(=) Lucro Bruto",           lucroBruto),
+                linha("(-) Despesas de Vendas",       despVendas,      false, nomesPorDre, DreCategoria.DESPESA_VENDAS),
+                linha("(-) Despesas Administrativas", despAdmin,       false, nomesPorDre, DreCategoria.DESPESA_ADMINISTRATIVA),
+                subtotal("(=) EBITDA",                ebitda),
+                linha("(-) Despesas Financeiras",     despFinanceiras, false, nomesPorDre, DreCategoria.DESPESA_FINANCEIRA),
+                linha("(+) Receitas Financeiras",     recFinanceiras,  false, nomesPorDre, DreCategoria.RECEITA_FINANCEIRA),
+                subtotal("(=) LAIR",                  lair),
+                linha("(-) Impostos (IR/CSLL)",       impostos,        false, nomesPorDre, DreCategoria.IMPOSTO),
+                subtotal("(=) Lucro Líquido",         lucroLiquido)
         );
 
         return new DreResponseDTO(mes, ano, linhas,
                 receitaBruta, deducoesReceita, receitaLiquida,
                 cpv, lucroBruto, despesasOperac, ebitda,
                 despFinanceiras, recFinanceiras, lair, impostos, lucroLiquido);
+    }
+
+    private DreLinhaDTO linha(String label, BigDecimal valor, boolean ehSubtotal,
+                               Map<DreCategoria, Set<String>> nomesPorDre, DreCategoria chave) {
+        List<String> cats = nomesPorDre.containsKey(chave)
+                ? new ArrayList<>(nomesPorDre.get(chave))
+                : List.of();
+        return new DreLinhaDTO(label, valor, ehSubtotal, cats);
+    }
+
+    private DreLinhaDTO subtotal(String label, BigDecimal valor) {
+        return new DreLinhaDTO(label, valor, true, List.of());
     }
 
     private BigDecimal get(Map<DreCategoria, BigDecimal> mapa, DreCategoria chave) {
