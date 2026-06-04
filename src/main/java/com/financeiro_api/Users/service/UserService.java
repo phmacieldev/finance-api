@@ -179,6 +179,26 @@ public class UserService {
     }
 
     @Transactional
+    public void deletarPropriaConta(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Usuário não encontrado"));
+
+        if (user.getRole() == Role.CEO && user.getEnterprise() != null) {
+            long ceosAtivos = userRepository
+                    .findAllByEnterprise_IdOrderByNameAsc(user.getEnterprise().getId())
+                    .stream().filter(u -> u.getRole() == Role.CEO).count();
+            if (ceosAtivos <= 1) {
+                throw new ConflitoException(
+                        "Não é possível excluir a conta: você é o único CEO da empresa. " +
+                        "Transfira a responsabilidade antes de prosseguir.");
+            }
+        }
+
+        auditLogService.log(AuditAction.USER_DELETED, "User", user.getId().toString());
+        userRepository.delete(user);
+    }
+
+    @Transactional
     public PerfilResponseDTO atualizarEmpresa(UUID enterpriseId, String email, EnterpriseUpdateDTO dto) {
         Enterprise enterprise = enterpriseRepository.findById(enterpriseId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Empresa não encontrada"));

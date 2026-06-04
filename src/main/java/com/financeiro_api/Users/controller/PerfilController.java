@@ -43,4 +43,10 @@ public class PerfilController {
                                               @RequestBody EnterpriseUpdateDTO dto) {
         return userService.atualizarEmpresa(TenantContext.get(), email, dto);
     }
+
+    @DeleteMapping
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deletarConta(@AuthenticationPrincipal String email) {
+        userService.deletarPropriaConta(email);
+    }
 }

@@ -272,4 +272,12 @@ class AuthIntegrationTest extends IntegrationTestBase {
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk());
     }
+
+    // ── DELETE /me ────────────────────────────────────────────────────────────
+
+    @Test
+    void deletarConta_semAutenticacao_retorna401ou403() throws Exception {
+        mvc.perform(delete("/api/v1/me"))
+                .andExpect(status().is4xxClientError());
+    }
 }
