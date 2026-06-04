@@ -1,5 +1,8 @@
 package com.financeiro_api.shared;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -12,6 +15,7 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+@Tag(name = "Health", description = "Liveness check com verificação de conectividade com o banco")
 @RestController
 @RequestMapping("/health")
 public class HealthController {
@@ -24,6 +28,8 @@ public class HealthController {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    @Operation(summary = "Status da API e do banco de dados")
+    @SecurityRequirements
     @GetMapping
     public ResponseEntity<Map<String, Object>> health() {
         Map<String, Object> result = new LinkedHashMap<>();

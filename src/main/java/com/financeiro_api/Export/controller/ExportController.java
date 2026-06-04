@@ -1,6 +1,8 @@
 package com.financeiro_api.Export.controller;
 
 import com.financeiro_api.Export.service.ExportService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -8,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 
+@Tag(name = "Export", description = "Download do extrato em CSV ou XLSX")
 @RestController
 @RequestMapping("/api/v1/export")
 public class ExportController {
@@ -18,6 +21,7 @@ public class ExportController {
         this.service = service;
     }
 
+    @Operation(summary = "Exportar extrato do mês em CSV")
     @GetMapping("/csv")
     public ResponseEntity<byte[]> exportarCsv(
             @RequestParam(defaultValue = "0") int mes,
@@ -38,6 +42,7 @@ public class ExportController {
                 .body(conteudo);
     }
 
+    @Operation(summary = "Exportar relatório do mês em XLSX")
     @GetMapping("/xlsx")
     public ResponseEntity<byte[]> exportarXlsx(
             @RequestParam(defaultValue = "0") int mes,

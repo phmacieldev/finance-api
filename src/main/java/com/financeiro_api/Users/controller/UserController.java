@@ -5,6 +5,8 @@ import com.financeiro_api.Users.dto.UserResponseDTO;
 import com.financeiro_api.Users.dto.UserUpdateDTO;
 import com.financeiro_api.Users.service.UserService;
 import com.financeiro_api.shared.TenantContext;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -12,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
+@Tag(name = "Usuários", description = "Gestão de usuários da empresa (requer role CEO ou OWNER)")
 @RestController
 @RequestMapping("/api/v1/users")
 public class UserController {
