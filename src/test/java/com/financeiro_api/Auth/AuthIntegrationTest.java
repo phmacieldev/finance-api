@@ -110,6 +110,34 @@ class AuthIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
+    void register_senhaCurta_retorna400() throws Exception {
+        mvc.perform(post(BASE + "/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "enterpriseName", "Empresa Teste",
+                                "cnpj", TEST_CNPJ,
+                                "userName", "Usuário Teste",
+                                "email", TEST_EMAIL,
+                                "password", "abc1"
+                        ))))
+                .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
+    void register_senhaSemNumero_retorna400() throws Exception {
+        mvc.perform(post(BASE + "/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "enterpriseName", "Empresa Teste",
+                                "cnpj", TEST_CNPJ,
+                                "userName", "Usuário Teste",
+                                "email", TEST_EMAIL,
+                                "password", "senhasemnumero"
+                        ))))
+                .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
     void register_emailDuplicado_retorna409() throws Exception {
         registerTestUser();
         mvc.perform(post(BASE + "/register")
