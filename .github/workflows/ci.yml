@@ -11,6 +11,21 @@ jobs:
     name: Build & Test
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: financeiro_test
+          POSTGRES_USER: ci_user
+          POSTGRES_PASSWORD: ci_pass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,6 +40,6 @@ jobs:
       - name: Run tests
         run: ./mvnw verify -B
         env:
+          CI: "true"
           JWT_SECRET: ci-test-secret-must-be-at-least-48-characters-long
-          TESTCONTAINERS_RYUK_DISABLED: "true"
-          DOCKER_HOST: unix:///var/run/docker.sock
+          SPRING_PROFILES_ACTIVE: ci
