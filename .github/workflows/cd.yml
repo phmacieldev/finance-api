@@ -24,6 +24,8 @@ jobs:
         run: ./mvnw verify -B
         env:
           JWT_SECRET: ci-test-secret-must-be-at-least-48-characters-long
+          TESTCONTAINERS_RYUK_DISABLED: "true"
+          DOCKER_HOST: unix:///var/run/docker.sock
 
   deploy:
     name: Deploy to Render
