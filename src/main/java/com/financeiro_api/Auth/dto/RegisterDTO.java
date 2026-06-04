@@ -1,5 +1,6 @@
 package com.financeiro_api.Auth.dto;
 
+import com.financeiro_api.shared.validation.ValidCnpj;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -12,5 +13,5 @@ public record RegisterDTO(
         @Pattern(regexp = ".*\\d.*", message = "Password must contain at least one number")
         String password,
         @NotBlank String enterpriseName,
-        @NotBlank String cnpj
+        @NotBlank @ValidCnpj String cnpj
 ) {}

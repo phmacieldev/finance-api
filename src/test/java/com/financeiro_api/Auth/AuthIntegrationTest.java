@@ -138,13 +138,27 @@ class AuthIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
+    void register_cnpjInvalido_retorna422() throws Exception {
+        mvc.perform(post(BASE + "/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "enterpriseName", "Empresa Teste",
+                                "cnpj", "11111111111111",
+                                "userName", "Usuário Teste",
+                                "email", TEST_EMAIL,
+                                "password", "senha123"
+                        ))))
+                .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
     void register_emailDuplicado_retorna409() throws Exception {
         registerTestUser();
         mvc.perform(post(BASE + "/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json(Map.of(
                                 "enterpriseName", "Outra Empresa",
-                                "cnpj", "99888777000166",
+                                "cnpj", "99888777000100",
                                 "userName", "Maria",
                                 "email", TEST_EMAIL,
                                 "password", "senha123"
