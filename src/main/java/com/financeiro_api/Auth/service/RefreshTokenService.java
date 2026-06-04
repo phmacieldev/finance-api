@@ -60,6 +60,14 @@ public class RefreshTokenService {
     }
 
     @Transactional
+    public void revogarPorToken(String token) {
+        repository.findByToken(token).ifPresent(rt -> {
+            rt.setRevoked(true);
+            repository.save(rt);
+        });
+    }
+
+    @Transactional
     public void revogarTodos(UUID userId) {
         repository.revokeAllByUserId(userId);
     }
