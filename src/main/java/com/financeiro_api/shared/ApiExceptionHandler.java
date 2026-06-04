@@ -2,6 +2,7 @@ package com.financeiro_api.shared;
 
 import com.financeiro_api.shared.dto.ErroResponse;
 import com.financeiro_api.shared.exception.AcessoNegadoException;
+import com.financeiro_api.shared.LogMask;
 import com.financeiro_api.shared.exception.ConflitoException;
 import com.financeiro_api.shared.exception.RecursoNaoEncontradoException;
 import org.slf4j.Logger;
@@ -77,7 +78,7 @@ public class ApiExceptionHandler {
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ErroResponse erroInterno(Exception ex) {
-        log.error("Erro inesperado: {}", ex.getMessage(), ex);
+        log.error("Erro inesperado: {}", LogMask.sanitize(ex.getMessage()), ex);
         return new ErroResponse(500, "Erro interno do servidor");
     }
 }
