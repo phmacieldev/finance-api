@@ -69,6 +69,7 @@ public class AuthService {
                         .enterprise(enterprise)
                         .emailVerificado(false)
                         .tokenVerificacao(token)
+                        .tokenVerificacaoExpiracao(LocalDateTime.now().plusHours(24))
                         .build()
         );
 
@@ -83,8 +84,14 @@ public class AuthService {
         User user = userRepository.findByTokenVerificacao(token)
                 .orElseThrow(() -> new BadCredentialsException("Token de verificação inválido ou expirado"));
 
+        if (user.getTokenVerificacaoExpiracao() != null &&
+                user.getTokenVerificacaoExpiracao().isBefore(LocalDateTime.now())) {
+            throw new BadCredentialsException("Token de verificação inválido ou expirado");
+        }
+
         user.setEmailVerificado(true);
         user.setTokenVerificacao(null);
+        user.setTokenVerificacaoExpiracao(null);
         userRepository.save(user);
 
         String jwt = jwtService.gerarToken(user.getEmail(), user.getId(),
@@ -129,6 +136,7 @@ public class AuthService {
 
         String token = UUID.randomUUID().toString().replace("-", "");
         user.setTokenVerificacao(token);
+        user.setTokenVerificacaoExpiracao(LocalDateTime.now().plusHours(24));
         userRepository.save(user);
         emailService.enviarVerificacaoEmail(email, token);
     }
