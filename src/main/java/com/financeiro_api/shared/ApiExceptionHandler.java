@@ -4,6 +4,8 @@ import com.financeiro_api.shared.dto.ErroResponse;
 import com.financeiro_api.shared.exception.AcessoNegadoException;
 import com.financeiro_api.shared.exception.ConflitoException;
 import com.financeiro_api.shared.exception.RecursoNaoEncontradoException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
@@ -18,6 +20,8 @@ import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
 
     @ExceptionHandler(RecursoNaoEncontradoException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
@@ -73,6 +77,7 @@ public class ApiExceptionHandler {
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ErroResponse erroInterno(Exception ex) {
+        log.error("Erro inesperado: {}", ex.getMessage(), ex);
         return new ErroResponse(500, "Erro interno do servidor");
     }
 }
