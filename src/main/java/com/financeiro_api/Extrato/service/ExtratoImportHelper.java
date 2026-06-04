@@ -1,5 +1,7 @@
 package com.financeiro_api.Extrato.service;
 
+import com.financeiro_api.Audit.domain.AuditAction;
+import com.financeiro_api.Audit.service.AuditLogService;
 import com.financeiro_api.Extrato.domain.Extrato;
 import com.financeiro_api.Extrato.dto.ExtratoImportResultDTO;
 import com.financeiro_api.Extrato.repository.ExtratoRepository;
@@ -36,9 +38,11 @@ public class ExtratoImportHelper {
     );
 
     private final ExtratoRepository repository;
+    private final AuditLogService auditLogService;
 
-    public ExtratoImportHelper(ExtratoRepository repository) {
+    public ExtratoImportHelper(ExtratoRepository repository, AuditLogService auditLogService) {
         this.repository = repository;
+        this.auditLogService = auditLogService;
     }
 
     public boolean deveIgnorar(String lancamento) {
@@ -93,6 +97,9 @@ public class ExtratoImportHelper {
         }
 
         String batchIdStr = (importados > 0 && batchId != null) ? batchId.toString() : null;
+        if (importados > 0) {
+            auditLogService.log(AuditAction.EXTRATO_IMPORTED, "Extrato", batchIdStr);
+        }
         return new ExtratoImportResultDTO(importados, duplicatas, erros, batchIdStr,
                 String.format("Importados: %d | Duplicatas ignoradas: %d | Erros: %d",
                         importados, duplicatas, erros));

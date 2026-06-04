@@ -1,0 +1,40 @@
+package com.financeiro_api.Audit.domain;
+
+public enum AuditAction {
+    // Auth
+    USER_REGISTER,
+    USER_LOGIN,
+    PASSWORD_RESET_REQUESTED,
+    PASSWORD_RESET_COMPLETED,
+    EMAIL_VERIFICATION_RESENT,
+
+    // Users (admin/owner)
+    USER_CREATED,
+    USER_UPDATED,
+    USER_DELETED,
+
+    // Profile
+    PROFILE_UPDATED,
+    PASSWORD_CHANGED,
+    ENTERPRISE_UPDATED,
+
+    // Extratos
+    EXTRATO_IMPORTED,
+    EXTRATO_DELETED,
+    EXTRATO_BATCH_DELETED,
+    EXTRATO_CATEGORIA_UPDATED,
+    EXTRATO_CONTA_UPDATED,
+
+    // Categorias
+    CATEGORIA_CREATED,
+    CATEGORIA_DELETED,
+
+    // Contas bancárias
+    CONTA_BANCARIA_CREATED,
+    CONTA_BANCARIA_DELETED,
+
+    // Admin
+    ENTERPRISE_APPROVED,
+    ENTERPRISE_REJECTED,
+    ENTERPRISE_PLAN_UPDATED,
+}

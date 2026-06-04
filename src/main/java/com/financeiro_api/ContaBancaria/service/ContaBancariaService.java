@@ -1,5 +1,7 @@
 package com.financeiro_api.ContaBancaria.service;
 
+import com.financeiro_api.Audit.domain.AuditAction;
+import com.financeiro_api.Audit.service.AuditLogService;
 import com.financeiro_api.ContaBancaria.domain.ContaBancaria;
 import com.financeiro_api.ContaBancaria.dto.ContaBancariaCreateDTO;
 import com.financeiro_api.ContaBancaria.dto.ContaBancariaResponseDTO;
@@ -16,9 +18,11 @@ import java.util.UUID;
 public class ContaBancariaService {
 
     private final ContaBancariaRepository repository;
+    private final AuditLogService auditLogService;
 
-    public ContaBancariaService(ContaBancariaRepository repository) {
+    public ContaBancariaService(ContaBancariaRepository repository, AuditLogService auditLogService) {
         this.repository = repository;
+        this.auditLogService = auditLogService;
     }
 
     public List<ContaBancariaResponseDTO> listar() {
@@ -34,7 +38,9 @@ public class ContaBancariaService {
                 .banco(dto.banco().trim())
                 .tipo(dto.tipo() != null ? dto.tipo() : com.financeiro_api.ContaBancaria.domain.TipoConta.CORRENTE)
                 .build();
-        return ContaBancariaResponseDTO.from(repository.save(conta));
+        ContaBancaria saved = repository.save(conta);
+        auditLogService.log(AuditAction.CONTA_BANCARIA_CREATED, "ContaBancaria", saved.getId().toString());
+        return ContaBancariaResponseDTO.from(saved);
     }
 
     @Transactional
@@ -43,5 +49,6 @@ public class ContaBancariaService {
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Conta bancária não encontrada: " + id));
         conta.setAtiva(false);
         repository.save(conta);
+        auditLogService.log(AuditAction.CONTA_BANCARIA_DELETED, "ContaBancaria", id.toString());
     }
 }

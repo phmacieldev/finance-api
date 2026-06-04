@@ -1,5 +1,7 @@
 package com.financeiro_api.Auth.service;
 
+import com.financeiro_api.Audit.domain.AuditAction;
+import com.financeiro_api.Audit.service.AuditLogService;
 import com.financeiro_api.Auth.dto.EsqueciSenhaDTO;
 import com.financeiro_api.Auth.dto.LoginDTO;
 import com.financeiro_api.Auth.dto.RegisterDTO;
@@ -11,6 +13,7 @@ import com.financeiro_api.Enterprises.repository.EnterpriseRepository;
 import com.financeiro_api.Users.domain.Role;
 import com.financeiro_api.Users.domain.User;
 import com.financeiro_api.Users.repository.UserRepository;
+import com.financeiro_api.shared.TenantContext;
 import com.financeiro_api.shared.exception.ConflitoException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
@@ -29,17 +32,20 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final EmailService emailService;
+    private final AuditLogService auditLogService;
 
     public AuthService(UserRepository userRepository,
                        EnterpriseRepository enterpriseRepository,
                        PasswordEncoder passwordEncoder,
                        JwtService jwtService,
-                       EmailService emailService) {
+                       EmailService emailService,
+                       AuditLogService auditLogService) {
         this.userRepository = userRepository;
         this.enterpriseRepository = enterpriseRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.emailService = emailService;
+        this.auditLogService = auditLogService;
     }
 
     @Transactional
@@ -76,6 +82,10 @@ public class AuthService {
         emailService.enviarVerificacaoEmail(user.getEmail(), token);
         emailService.notificarNovaEmpresa(enterprise.getName(), enterprise.getCnpj(), user.getEmail());
 
+        TenantContext.setUserId(user.getId());
+        TenantContext.setEmail(user.getEmail());
+        auditLogService.log(AuditAction.USER_REGISTER, "User", user.getId().toString());
+
         return new TokenResponseDTO(null, user.getEmail(), user.getRole().name());
     }
 
@@ -94,6 +104,11 @@ public class AuthService {
         user.setTokenVerificacaoExpiracao(null);
         userRepository.save(user);
 
+        TenantContext.setUserId(user.getId());
+        TenantContext.setEmail(user.getEmail());
+        TenantContext.set(user.getEnterprise().getId());
+        auditLogService.log(AuditAction.USER_LOGIN, "User", user.getId().toString());
+
         String jwt = jwtService.gerarToken(user.getEmail(), user.getId(),
                 user.getEnterprise().getId(), user.getRole().name());
         return new TokenResponseDTO(jwt, user.getEmail(), user.getRole().name());
@@ -108,6 +123,9 @@ public class AuthService {
         }
 
         if (user.getRole() == Role.PLATFORM_ADMIN) {
+            TenantContext.setUserId(user.getId());
+            TenantContext.setEmail(user.getEmail());
+            auditLogService.log(AuditAction.USER_LOGIN, "User", user.getId().toString());
             String token = jwtService.gerarToken(user.getEmail(), user.getId(), null, user.getRole().name());
             return new TokenResponseDTO(token, user.getEmail(), user.getRole().name());
         }
@@ -123,6 +141,11 @@ public class AuthService {
         if (enterprise.getStatus() == EnterpriseStatus.BLOQUEADA) {
             throw new DisabledException("Empresa bloqueada. Entre em contato com o suporte.");
         }
+
+        TenantContext.setUserId(user.getId());
+        TenantContext.setEmail(user.getEmail());
+        TenantContext.set(enterprise.getId());
+        auditLogService.log(AuditAction.USER_LOGIN, "User", user.getId().toString());
 
         String token = jwtService.gerarToken(user.getEmail(), user.getId(),
                 enterprise.getId(), user.getRole().name());
@@ -149,6 +172,9 @@ public class AuthService {
             user.setTokenResetExpiracao(LocalDateTime.now().plusHours(1));
             userRepository.save(user);
             emailService.enviarResetSenha(user.getEmail(), token);
+            TenantContext.setUserId(user.getId());
+            TenantContext.setEmail(user.getEmail());
+            auditLogService.log(AuditAction.PASSWORD_RESET_REQUESTED, "User", user.getId().toString());
         });
         // sempre retorna 204 para não revelar se o email existe
     }
@@ -166,5 +192,8 @@ public class AuthService {
         user.setTokenResetSenha(null);
         user.setTokenResetExpiracao(null);
         userRepository.save(user);
+        TenantContext.setUserId(user.getId());
+        TenantContext.setEmail(user.getEmail());
+        auditLogService.log(AuditAction.PASSWORD_RESET_COMPLETED, "User", user.getId().toString());
     }
 }

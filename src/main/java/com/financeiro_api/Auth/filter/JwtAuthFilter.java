@@ -44,6 +44,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         List.of(new SimpleGrantedAuthority("ROLE_" + role))
                 );
                 SecurityContextHolder.getContext().setAuthentication(auth);
+                TenantContext.setUserId(jwtService.extrairUserId(token));
+                TenantContext.setEmail(email);
                 UUID enterpriseId = jwtService.extrairEnterpriseId(token);
                 if (enterpriseId != null) {
                     TenantContext.set(enterpriseId);
