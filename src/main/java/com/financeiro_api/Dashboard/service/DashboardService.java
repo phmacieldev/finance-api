@@ -6,6 +6,7 @@ import com.financeiro_api.Dashboard.dto.DashboardDTO;
 import com.financeiro_api.Dashboard.dto.FluxoDiarioDTO;
 import com.financeiro_api.Dashboard.dto.TopCategoriaDTO;
 import com.financeiro_api.Extrato.domain.Extrato;
+import com.financeiro_api.Extrato.dto.ExtratoResponseDTO;
 import com.financeiro_api.Extrato.repository.ExtratoRepository;
 import com.financeiro_api.SaldoAnterior.repository.SaldoAnteriorRepository;
 import com.financeiro_api.shared.TenantContext;
@@ -44,7 +45,6 @@ public class DashboardService {
         List<Extrato> extratosMes = extratoRepository
                 .findAllByEnterpriseIdAndMesAndAnoOrderByDataAsc(tenantId, mes, ano);
 
-        // Mês anterior
         YearMonth mesAnteriorYM = YearMonth.of(ano, mes).minusMonths(1);
         List<Extrato> extratosMesAnterior = extratoRepository
                 .findAllByEnterpriseIdAndMesAndAnoOrderByDataAsc(
@@ -61,6 +61,8 @@ public class DashboardService {
                 .orElse(BigDecimal.ZERO);
 
         BigDecimal saldoAtual = saldoAnterior.add(totalEntradas).subtract(totalSaidas);
+
+        BigDecimal saldoTotal = extratoRepository.sumTodosByEnterpriseId(tenantId);
 
         int semCategoria = (int) extratosMes.stream().filter(e -> e.getCategoriaId() == null).count();
 
@@ -84,11 +86,15 @@ public class DashboardService {
                         .multiply(BigDecimal.valueOf(100))
                 : BigDecimal.ZERO;
 
+        List<ExtratoResponseDTO> ultimosLancamentos = extratoRepository
+                .findTop5ByEnterpriseIdOrderByDataDescIdDesc(tenantId)
+                .stream().map(ExtratoResponseDTO::from).toList();
+
         return new DashboardDTO(
                 mes, ano, totalEntradas, totalSaidas,
-                totalEntradas.subtract(totalSaidas), saldoAtual,
+                totalEntradas.subtract(totalSaidas), saldoAtual, saldoTotal,
                 totalEntradasAnt, totalSaidasAnt, variacao, variacaoSaidas,
-                semCategoria, fluxoDiario, topDespesas, topReceitas
+                semCategoria, fluxoDiario, topDespesas, topReceitas, ultimosLancamentos
         );
     }
 

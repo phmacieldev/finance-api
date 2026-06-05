@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -63,6 +64,11 @@ public interface ExtratoRepository extends JpaRepository<Extrato, UUID> {
             @Param("inicio") LocalDate inicio,
             @Param("fim") LocalDate fim,
             @Param("razaoSocial") String razaoSocial);
+
+    @Query("SELECT COALESCE(SUM(e.valor), 0) FROM Extrato e WHERE e.enterpriseId = :enterpriseId")
+    BigDecimal sumTodosByEnterpriseId(@Param("enterpriseId") UUID enterpriseId);
+
+    List<Extrato> findTop5ByEnterpriseIdOrderByDataDescIdDesc(UUID enterpriseId);
 
     @Query(
         value = """
