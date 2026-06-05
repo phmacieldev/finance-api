@@ -80,12 +80,19 @@ public class AdminController {
         );
     }
 
-    @Operation(summary = "Alterar role de um usuário")
+    @Operation(summary = "Editar dados da empresa (nome)")
+    @PatchMapping("/empresas/{id}")
+    public AdminEnterpriseDTO editarEmpresa(@PathVariable UUID id,
+                                             @RequestBody Map<String, String> body) {
+        return service.editarEmpresa(id, body.get("name"));
+    }
+
+    @Operation(summary = "Editar usuário (nome, email e/ou role)")
     @PatchMapping("/empresas/{enterpriseId}/usuarios/{userId}")
-    public AdminUserDTO alterarRole(@PathVariable UUID enterpriseId,
-                                    @PathVariable UUID userId,
-                                    @RequestBody Map<String, String> body) {
-        return service.alterarRoleUsuario(enterpriseId, userId, body.get("role"));
+    public AdminUserDTO editarUsuario(@PathVariable UUID enterpriseId,
+                                      @PathVariable UUID userId,
+                                      @RequestBody Map<String, String> body) {
+        return service.editarUsuario(enterpriseId, userId, body.get("name"), body.get("email"), body.get("role"));
     }
 
     @Operation(summary = "Remover usuário de uma empresa")

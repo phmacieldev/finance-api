@@ -189,10 +189,28 @@ public class AdminService {
     }
 
     @Transactional
-    public AdminUserDTO alterarRoleUsuario(UUID enterpriseId, UUID userId, String role) {
+    public AdminEnterpriseDTO editarEmpresa(UUID id, String name) {
+        Enterprise e = enterpriseRepository.findById(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Empresa não encontrada: " + id));
+        if (name != null && !name.isBlank()) e.setName(name.trim());
+        AdminEnterpriseDTO result = AdminEnterpriseDTO.from(enterpriseRepository.save(e));
+        auditLogService.log(AuditAction.ENTERPRISE_UPDATED, "Enterprise", id.toString());
+        return result;
+    }
+
+    @Transactional
+    public AdminUserDTO editarUsuario(UUID enterpriseId, UUID userId, String name, String email, String role) {
         User user = userRepository.findByIdAndEnterprise_Id(userId, enterpriseId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Usuário não encontrado"));
-        user.setRole(Role.valueOf(role.toUpperCase()));
+        if (name != null && !name.isBlank()) user.setName(name.trim());
+        if (email != null && !email.isBlank()) {
+            String normalized = email.trim().toLowerCase();
+            if (!normalized.equals(user.getEmail()) && userRepository.existsByEmail(normalized)) {
+                throw new ConflitoException("E-mail já está em uso: " + normalized);
+            }
+            user.setEmail(normalized);
+        }
+        if (role != null && !role.isBlank()) user.setRole(Role.valueOf(role.toUpperCase()));
         AdminUserDTO result = AdminUserDTO.from(userRepository.save(user));
         auditLogService.log(AuditAction.USER_UPDATED, "User", userId.toString());
         return result;
