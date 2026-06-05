@@ -1,10 +1,12 @@
 package com.financeiro_api.Admin.controller;
 
+import com.financeiro_api.Admin.dto.AdminCriarEmpresaDTO;
 import com.financeiro_api.Admin.dto.AdminEnterpriseDTO;
 import com.financeiro_api.Admin.dto.AdminUserDTO;
 import com.financeiro_api.Admin.service.AdminService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,6 +23,13 @@ public class AdminController {
 
     public AdminController(AdminService service) {
         this.service = service;
+    }
+
+    @Operation(summary = "Criar empresa com usuário CEO inicial")
+    @PostMapping("/empresas")
+    @ResponseStatus(HttpStatus.CREATED)
+    public AdminEnterpriseDTO criarEmpresa(@RequestBody @Valid AdminCriarEmpresaDTO dto) {
+        return service.criarEmpresa(dto);
     }
 
     @Operation(summary = "Listar empresas (filtrável por status: PENDENTE, ATIVA, BLOQUEADA)")

@@ -8,6 +8,8 @@ import com.financeiro_api.Categorias.service.CategoriaService;
 import com.financeiro_api.Extrato.domain.Extrato;
 import com.financeiro_api.Extrato.dto.AtribuirCategoriaDTO;
 import com.financeiro_api.Extrato.dto.AtribuirContaDTO;
+import com.financeiro_api.Extrato.dto.CriarExtratoDTO;
+import com.financeiro_api.Extrato.dto.EditarExtratoDTO;
 import com.financeiro_api.Extrato.dto.ExtratoResponseDTO;
 import com.financeiro_api.Extrato.repository.ExtratoRepository;
 import com.financeiro_api.shared.TenantContext;
@@ -37,26 +39,31 @@ public class ExtratoService {
         this.auditLogService = auditLogService;
     }
 
+    @Transactional(readOnly = true)
     public List<ExtratoResponseDTO> listarPorMes(int mes, int ano) {
         return repository.findAllByEnterpriseIdAndMesAndAnoOrderByDataAsc(TenantContext.get(), mes, ano)
                 .stream().map(ExtratoResponseDTO::from).toList();
     }
 
+    @Transactional(readOnly = true)
     public List<ExtratoResponseDTO> listarPorPeriodo(LocalDate inicio, LocalDate fim) {
         return repository.findAllByEnterpriseIdAndDataBetweenOrderByDataAsc(TenantContext.get(), inicio, fim)
                 .stream().map(ExtratoResponseDTO::from).toList();
     }
 
+    @Transactional(readOnly = true)
     public List<ExtratoResponseDTO> buscarComFiltro(LocalDate inicio, LocalDate fim, String razaoSocial) {
         return repository.buscarComFiltro(TenantContext.get(), inicio, fim, razaoSocial)
                 .stream().map(ExtratoResponseDTO::from).toList();
     }
 
+    @Transactional(readOnly = true)
     public Page<ExtratoResponseDTO> listarPaginado(int mes, int ano, UUID categoriaId, UUID contaBancariaId, String tipo, Pageable pageable) {
         return repository.buscarPorMesAnoComFiltros(TenantContext.get(), mes, ano, categoriaId, contaBancariaId, tipo, pageable)
                 .map(ExtratoResponseDTO::from);
     }
 
+    @Transactional(readOnly = true)
     public List<ExtratoResponseDTO> listarSemCategoria(int mes, int ano) {
         return repository.findSemCategoria(TenantContext.get(), mes, ano)
                 .stream().map(ExtratoResponseDTO::from).toList();
@@ -107,5 +114,48 @@ public class ExtratoService {
     public void cancelarLote(UUID batchId) {
         repository.deleteByEnterpriseIdAndImportBatchId(TenantContext.get(), batchId);
         auditLogService.log(AuditAction.EXTRATO_BATCH_DELETED, "Extrato", batchId.toString());
+    }
+
+    @Transactional
+    public ExtratoResponseDTO criarManual(CriarExtratoDTO dto) {
+        UUID enterpriseId = TenantContext.get();
+        boolean isReceita = "RECEITA".equalsIgnoreCase(dto.tipo());
+        BigDecimal valor = isReceita ? dto.valor().abs() : dto.valor().abs().negate();
+
+        Extrato extrato = Extrato.builder()
+                .enterpriseId(enterpriseId)
+                .data(dto.data())
+                .razaoSocial(dto.descricao())
+                .valor(valor)
+                .categoriaId(dto.categoriaId())
+                .contaBancariaId(dto.contaBancariaId())
+                .importHash("manual-" + java.util.UUID.randomUUID())
+                .build();
+
+        ExtratoResponseDTO result = ExtratoResponseDTO.from(repository.save(extrato));
+        auditLogService.log(AuditAction.EXTRATO_CREATED, "Extrato", result.id().toString());
+        return result;
+    }
+
+    @Transactional
+    public ExtratoResponseDTO editar(UUID id, EditarExtratoDTO dto) {
+        Extrato extrato = repository.findByEnterpriseIdAndId(TenantContext.get(), id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Extrato não encontrado: " + id));
+
+        if (dto.data() != null) {
+            extrato.setData(dto.data());
+            extrato.setMes(dto.data().getMonthValue());
+            extrato.setAno(dto.data().getYear());
+        }
+        if (dto.descricao() != null && !dto.descricao().isBlank()) {
+            extrato.setRazaoSocial(dto.descricao());
+        }
+        if (dto.valor() != null) {
+            extrato.setValor(dto.valor());
+        }
+
+        ExtratoResponseDTO result = ExtratoResponseDTO.from(repository.save(extrato));
+        auditLogService.log(AuditAction.EXTRATO_UPDATED, "Extrato", id.toString());
+        return result;
     }
 }

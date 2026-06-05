@@ -25,6 +25,7 @@ public class ContaBancariaService {
         this.auditLogService = auditLogService;
     }
 
+    @Transactional(readOnly = true)
     public List<ContaBancariaResponseDTO> listar() {
         return repository.findAllByEnterpriseIdAndAtivaTrue(TenantContext.get())
                 .stream().map(ContaBancariaResponseDTO::from).toList();

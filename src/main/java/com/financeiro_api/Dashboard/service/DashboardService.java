@@ -10,6 +10,7 @@ import com.financeiro_api.Extrato.repository.ExtratoRepository;
 import com.financeiro_api.SaldoAnterior.repository.SaldoAnteriorRepository;
 import com.financeiro_api.shared.TenantContext;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -33,6 +34,7 @@ public class DashboardService {
         this.saldoAnteriorRepository = saldoAnteriorRepository;
     }
 
+    @Transactional(readOnly = true)
     public DashboardDTO calcular(int mes, int ano) {
         UUID tenantId = TenantContext.get();
 

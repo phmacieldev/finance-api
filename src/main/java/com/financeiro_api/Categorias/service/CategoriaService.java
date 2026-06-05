@@ -11,6 +11,7 @@ import com.financeiro_api.shared.TenantContext;
 import com.financeiro_api.shared.exception.ConflitoException;
 import com.financeiro_api.shared.exception.RecursoNaoEncontradoException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
@@ -26,6 +27,7 @@ public class CategoriaService {
         this.auditLogService = auditLogService;
     }
 
+    @Transactional(readOnly = true)
     public List<CategoriaResponseDTO> listar() {
         return repository.findAllByEnterpriseId(TenantContext.get())
                 .stream().map(CategoriaResponseDTO::from).toList();
@@ -59,6 +61,7 @@ public class CategoriaService {
         auditLogService.log(AuditAction.CATEGORIA_DELETED, "Categoria", id.toString());
     }
 
+    @Transactional(readOnly = true)
     public Categoria buscarPorId(UUID id) {
         return repository.findByEnterpriseIdAndId(TenantContext.get(), id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Categoria não encontrada: " + id));

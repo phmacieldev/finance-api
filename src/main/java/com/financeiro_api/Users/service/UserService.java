@@ -3,8 +3,11 @@ package com.financeiro_api.Users.service;
 import com.financeiro_api.Audit.domain.AuditAction;
 import com.financeiro_api.Audit.service.AuditLogService;
 import com.financeiro_api.Enterprises.domain.Enterprise;
+import com.financeiro_api.Enterprises.domain.TipoPessoa;
 import com.financeiro_api.Enterprises.dto.EnterpriseUpdateDTO;
 import com.financeiro_api.Enterprises.repository.EnterpriseRepository;
+import com.financeiro_api.shared.validation.CpfValidator;
+import com.financeiro_api.shared.validation.CnpjValidator;
 import com.financeiro_api.Users.domain.Role;
 import com.financeiro_api.Users.domain.User;
 import com.financeiro_api.Users.dto.AlterarSenhaDTO;
@@ -43,6 +46,7 @@ public class UserService {
         this.auditLogService = auditLogService;
     }
 
+    @Transactional(readOnly = true)
     public PerfilResponseDTO buscarPerfil(String email) {
         User user = userRepository.findByEmailWithEnterprise(email)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Usuário não encontrado"));
@@ -86,6 +90,7 @@ public class UserService {
         auditLogService.log(AuditAction.PASSWORD_CHANGED, "User", user.getId().toString());
     }
 
+    @Transactional(readOnly = true)
     public List<UserResponseDTO> listarPorEmpresa(UUID enterpriseId) {
         return userRepository.findAllByEnterprise_IdOrderByNameAsc(enterpriseId)
                 .stream()
@@ -207,12 +212,32 @@ public class UserService {
             enterprise.setName(dto.name().trim());
         }
 
-        if (dto.cnpj() != null && !dto.cnpj().isBlank() &&
-                !dto.cnpj().equals(enterprise.getCnpj())) {
-            if (enterpriseRepository.existsByCnpj(dto.cnpj())) {
-                throw new ConflitoException("CNPJ já cadastrado: " + dto.cnpj());
+        TipoPessoa tipo = dto.tipoPessoa() != null ? dto.tipoPessoa() : enterprise.getTipoPessoa();
+        enterprise.setTipoPessoa(tipo);
+
+        if (tipo == TipoPessoa.JURIDICA) {
+            String cnpj = dto.cnpj() != null ? dto.cnpj().replaceAll("[.\\-/]", "").trim() : null;
+            if (cnpj != null && !cnpj.isBlank() && !cnpj.equals(
+                    enterprise.getCnpj() != null ? enterprise.getCnpj().replaceAll("[.\\-/]", "") : "")) {
+                if (!new CnpjValidator().isValid(cnpj, null)) {
+                    throw new IllegalArgumentException("CNPJ inválido");
+                }
+                if (enterpriseRepository.existsByCnpj(cnpj)) {
+                    throw new ConflitoException("CNPJ já cadastrado: " + cnpj);
+                }
+                enterprise.setCnpj(cnpj);
             }
-            enterprise.setCnpj(dto.cnpj().trim());
+            enterprise.setCpf(null);
+        } else {
+            String cpf = dto.cpf() != null ? dto.cpf().replaceAll("[.\\-]", "").trim() : null;
+            if (cpf != null && !cpf.isBlank() && !cpf.equals(
+                    enterprise.getCpf() != null ? enterprise.getCpf().replaceAll("[.\\-]", "") : "")) {
+                if (!new CpfValidator().isValid(cpf, null)) {
+                    throw new IllegalArgumentException("CPF inválido");
+                }
+                enterprise.setCpf(cpf);
+            }
+            enterprise.setCnpj(null);
         }
 
         enterpriseRepository.save(enterprise);

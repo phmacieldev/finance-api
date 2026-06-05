@@ -2,12 +2,16 @@ package com.financeiro_api.Admin.service;
 
 import com.financeiro_api.Audit.domain.AuditAction;
 import com.financeiro_api.Audit.service.AuditLogService;
+import com.financeiro_api.Admin.dto.AdminCriarEmpresaDTO;
 import com.financeiro_api.Admin.dto.AdminEnterpriseDTO;
 import com.financeiro_api.Admin.dto.AdminUserDTO;
 import com.financeiro_api.Enterprises.domain.Enterprise;
 import com.financeiro_api.Enterprises.domain.EnterpriseStatus;
 import com.financeiro_api.Enterprises.domain.Plan;
+import com.financeiro_api.Enterprises.domain.TipoPessoa;
 import com.financeiro_api.Enterprises.repository.EnterpriseRepository;
+import com.financeiro_api.shared.validation.CnpjValidator;
+import com.financeiro_api.shared.validation.CpfValidator;
 import com.financeiro_api.Users.domain.Role;
 import com.financeiro_api.Users.domain.User;
 import com.financeiro_api.Users.repository.UserRepository;
@@ -42,6 +46,58 @@ public class AdminService {
         this.jdbc = jdbc;
     }
 
+    @Transactional
+    public AdminEnterpriseDTO criarEmpresa(AdminCriarEmpresaDTO dto) {
+        if (userRepository.existsByEmail(dto.adminEmail())) {
+            throw new ConflitoException("E-mail já está em uso: " + dto.adminEmail());
+        }
+
+        TipoPessoa tipo = dto.tipoPessoaEfetiva();
+        String cnpj = null;
+        String cpf = null;
+
+        if (tipo == TipoPessoa.JURIDICA) {
+            String digits = dto.cnpj() != null ? dto.cnpj().replaceAll("[.\\-/]", "") : "";
+            if (!new CnpjValidator().isValid(digits, null)) {
+                throw new IllegalArgumentException("CNPJ inválido");
+            }
+            if (enterpriseRepository.existsByCnpj(digits)) {
+                throw new ConflitoException("CNPJ já cadastrado: " + digits);
+            }
+            cnpj = digits;
+        } else {
+            String digits = dto.cpf() != null ? dto.cpf().replaceAll("[.\\-]", "") : "";
+            if (!new CpfValidator().isValid(digits, null)) {
+                throw new IllegalArgumentException("CPF inválido");
+            }
+            cpf = digits;
+        }
+
+        Enterprise enterprise = Enterprise.builder()
+                .name(dto.name().trim())
+                .cnpj(cnpj)
+                .cpf(cpf)
+                .tipoPessoa(tipo)
+                .plan(dto.plan() != null ? dto.plan() : Plan.FREE)
+                .status(EnterpriseStatus.ATIVA)
+                .build();
+        Enterprise saved = enterpriseRepository.save(enterprise);
+
+        User admin = User.builder()
+                .enterprise(saved)
+                .name(dto.adminName().trim())
+                .email(dto.adminEmail().trim().toLowerCase())
+                .password(passwordEncoder.encode(dto.adminPassword()))
+                .role(Role.CEO)
+                .emailVerificado(true)
+                .build();
+        userRepository.save(admin);
+
+        auditLogService.log(AuditAction.ENTERPRISE_APPROVED, "Enterprise", saved.getId().toString());
+        return AdminEnterpriseDTO.from(saved);
+    }
+
+    @Transactional(readOnly = true)
     public List<AdminEnterpriseDTO> listarEmpresas(String status) {
         List<Enterprise> all;
         if (status != null && !status.isBlank()) {
@@ -124,6 +180,7 @@ public class AdminService {
         return result;
     }
 
+    @Transactional(readOnly = true)
     public List<AdminUserDTO> listarUsuariosEmpresa(UUID enterpriseId) {
         enterpriseRepository.findById(enterpriseId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Empresa não encontrada: " + enterpriseId));

@@ -10,6 +10,7 @@ import com.financeiro_api.Extrato.domain.Extrato;
 import com.financeiro_api.Extrato.repository.ExtratoRepository;
 import com.financeiro_api.shared.TenantContext;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.*;
@@ -26,6 +27,7 @@ public class DreService {
         this.categoriaRepository = categoriaRepository;
     }
 
+    @Transactional(readOnly = true)
     public DreResponseDTO calcular(int mes, int ano) {
         UUID tenantId = TenantContext.get();
 

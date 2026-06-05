@@ -25,6 +25,7 @@ public class PrevisaoService {
         this.repository = repository;
     }
 
+    @Transactional(readOnly = true)
     public List<PrevisaoResponseDTO> listar() {
         return repository.findAllByEnterpriseIdAndAtivaTrue(TenantContext.get())
                 .stream().map(PrevisaoResponseDTO::from).toList();
