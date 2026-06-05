@@ -35,10 +35,43 @@ public class ExportService {
         UUID tenantId = TenantContext.get();
         List<Extrato> extratos = extratoRepository
                 .findAllByEnterpriseIdAndMesAndAnoOrderByDataAsc(tenantId, mes, ano);
+        Map<UUID, Categoria> categorias = loadCategorias(tenantId);
+        return buildCsv(extratos, categorias);
+    }
 
-        Map<UUID, Categoria> categorias = categoriaRepository.findAllByEnterpriseId(tenantId)
+    public byte[] exportarCsvPeriodo(LocalDate inicio, LocalDate fim) {
+        UUID tenantId = TenantContext.get();
+        List<Extrato> extratos = extratoRepository
+                .findAllByEnterpriseIdAndDataBetweenOrderByDataAsc(tenantId, inicio, fim);
+        Map<UUID, Categoria> categorias = loadCategorias(tenantId);
+        return buildCsv(extratos, categorias);
+    }
+
+    public byte[] exportarXlsx(int mes, int ano) {
+        UUID tenantId = TenantContext.get();
+        List<Extrato> extratos = extratoRepository
+                .findAllByEnterpriseIdAndMesAndAnoOrderByDataAsc(tenantId, mes, ano);
+        Map<UUID, Categoria> categorias = loadCategorias(tenantId);
+        String titulo = YearMonth.of(ano, mes).getMonth()
+                .getDisplayName(java.time.format.TextStyle.FULL, new Locale("pt", "BR")) + "/" + ano;
+        return buildXlsx(extratos, categorias, titulo);
+    }
+
+    public byte[] exportarXlsxPeriodo(LocalDate inicio, LocalDate fim) {
+        UUID tenantId = TenantContext.get();
+        List<Extrato> extratos = extratoRepository
+                .findAllByEnterpriseIdAndDataBetweenOrderByDataAsc(tenantId, inicio, fim);
+        Map<UUID, Categoria> categorias = loadCategorias(tenantId);
+        String titulo = inicio.format(BR_DATE) + " a " + fim.format(BR_DATE);
+        return buildXlsx(extratos, categorias, titulo);
+    }
+
+    private Map<UUID, Categoria> loadCategorias(UUID tenantId) {
+        return categoriaRepository.findAllByEnterpriseId(tenantId)
                 .stream().collect(Collectors.toMap(Categoria::getId, c -> c));
+    }
 
+    private byte[] buildCsv(List<Extrato> extratos, Map<UUID, Categoria> categorias) {
         StringBuilder sb = new StringBuilder();
         sb.append("Data;Tipo Pagamento;Razão Social;CPF/CNPJ;Valor;Saldo;Categoria;Conciliado\n");
 
@@ -60,21 +93,14 @@ public class ExportService {
         return sb.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
     }
 
-    public byte[] exportarXlsx(int mes, int ano) {
-        UUID tenantId = TenantContext.get();
-        List<Extrato> extratos = extratoRepository
-                .findAllByEnterpriseIdAndMesAndAnoOrderByDataAsc(tenantId, mes, ano);
-
-        Map<UUID, Categoria> categorias = categoriaRepository.findAllByEnterpriseId(tenantId)
-                .stream().collect(Collectors.toMap(Categoria::getId, c -> c));
-
+    private byte[] buildXlsx(List<Extrato> extratos, Map<UUID, Categoria> categorias, String tituloResumo) {
         try (XSSFWorkbook workbook = new XSSFWorkbook()) {
             CellStyle headerStyle = criarEstiloHeader(workbook);
             CellStyle moedaStyle = criarEstiloMoeda(workbook);
             CellStyle subtotalStyle = criarEstiloSubtotal(workbook);
 
             criarAbaDetalhe(workbook, extratos, categorias, headerStyle, moedaStyle);
-            criarAbaResumo(workbook, extratos, categorias, headerStyle, moedaStyle, subtotalStyle, mes, ano);
+            criarAbaResumo(workbook, extratos, categorias, headerStyle, moedaStyle, subtotalStyle, tituloResumo);
 
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             workbook.write(out);
@@ -115,14 +141,12 @@ public class ExportService {
 
     private void criarAbaResumo(Workbook wb, List<Extrato> extratos, Map<UUID, Categoria> cats,
                                  CellStyle headerStyle, CellStyle moedaStyle, CellStyle subtotalStyle,
-                                 int mes, int ano) {
-        Sheet sheet = wb.createSheet("Resumo Mensal");
-        String nomeMes = YearMonth.of(ano, mes).getMonth()
-                .getDisplayName(java.time.format.TextStyle.FULL, new Locale("pt", "BR"));
+                                 String titulo) {
+        Sheet sheet = wb.createSheet("Resumo");
 
-        Row titulo = sheet.createRow(0);
-        Cell tituloCell = titulo.createCell(0);
-        tituloCell.setCellValue("Relatório Financeiro — " + nomeMes + "/" + ano);
+        Row tituloRow = sheet.createRow(0);
+        Cell tituloCell = tituloRow.createCell(0);
+        tituloCell.setCellValue("Relatório Financeiro — " + titulo);
         sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 3));
 
         BigDecimal totalEntradas = extratos.stream()
@@ -136,9 +160,9 @@ public class ExportService {
         int r = 2;
         adicionarLinhaResumo(sheet, r++, "Total Entradas", totalEntradas, moedaStyle);
         adicionarLinhaResumo(sheet, r++, "Total Saídas", totalSaidas, moedaStyle);
-        adicionarLinhaResumo(sheet, r++, "Saldo do Mês", totalEntradas.subtract(totalSaidas), subtotalStyle);
+        adicionarLinhaResumo(sheet, r++, "Saldo do Período", totalEntradas.subtract(totalSaidas), subtotalStyle);
         r++;
-        adicionarLinhaResumo(sheet, r++, "Transações no mês", BigDecimal.valueOf(extratos.size()), null);
+        adicionarLinhaResumo(sheet, r++, "Transações no período", BigDecimal.valueOf(extratos.size()), null);
         long semCat = extratos.stream().filter(e -> e.getCategoriaId() == null).count();
         adicionarLinhaResumo(sheet, r, "Sem categoria", BigDecimal.valueOf(semCat), null);
 
