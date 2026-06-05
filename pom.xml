@@ -79,6 +79,12 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- Email -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-mail</artifactId>
+		</dependency>
+
 		<!-- Rate limiting -->
 		<dependency>
 			<groupId>com.bucket4j</groupId>

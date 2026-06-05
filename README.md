@@ -124,7 +124,7 @@ Email:  admin@plataforma.com
 Senha:  admin@1234
 ```
 
-Para email (opcional em dev): configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`. Sem SMTP, os links de verificação aparecem no log.
+Para email (opcional em dev): configure `MAIL_USERNAME` (Gmail dedicado à API) e `MAIL_PASSWORD` (senha de app do Google). Sem essas variáveis, os links aparecem no log.
 
 ```bash
 curl http://localhost:8080/health
@@ -144,11 +144,8 @@ curl http://localhost:8080/health
 | `DB_PASS` | Senha do banco | `secret` |
 | `CORS_ORIGINS` | Origens permitidas | `http://localhost:3000` |
 | `APP_URL` | URL base do frontend (links de email) | `http://localhost:3000` |
-| `SMTP_HOST` | Host SMTP | — |
-| `SMTP_PORT` | Porta SMTP | `587` |
-| `SMTP_USER` | Usuário SMTP | — |
-| `SMTP_PASS` | Senha SMTP | — |
-| `MAIL_FROM` | Remetente dos emails | — |
+| `MAIL_USERNAME` | Gmail dedicado à API (ex: `app@gmail.com`) | — |
+| `MAIL_PASSWORD` | Senha de app Gmail (Conta Google → Segurança → Senhas de app) | — |
 | `PLATFORM_ADMIN_EMAIL` | Email do admin da plataforma | `admin@plataforma.com` |
 | `PLATFORM_ADMIN_PASSWORD` | Senha do admin da plataforma | `admin@1234` |
 
