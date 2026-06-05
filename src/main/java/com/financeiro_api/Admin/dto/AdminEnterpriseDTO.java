@@ -10,13 +10,14 @@ public record AdminEnterpriseDTO(
         UUID id,
         String name,
         String cnpj,
+        String cpf,
         String plan,
         EnterpriseStatus status,
         LocalDateTime createdAt
 ) {
     public static AdminEnterpriseDTO from(Enterprise e) {
         return new AdminEnterpriseDTO(
-                e.getId(), e.getName(), e.getCnpj(),
+                e.getId(), e.getName(), e.getCnpj(), e.getCpf(),
                 e.getPlan().name(), e.getStatus(), e.getCreatedAt()
         );
     }
