@@ -219,7 +219,7 @@ class AuthIntegrationTest extends IntegrationTestBase {
     void resetarSenha_tokenInvalido_retorna401() throws Exception {
         mvc.perform(post(BASE + "/resetar-senha")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json(Map.of("token", "tokeninvalido", "novaSenha", "nova123"))))
+                        .content(json(Map.of("token", "tokeninvalido", "novaSenha", "nova1234"))))
                 .andExpect(status().isUnauthorized());
     }
 
