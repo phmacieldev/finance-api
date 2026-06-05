@@ -6,6 +6,10 @@
 **Frontend:** https://github.com/phmacieldev/finance-api-web
 
 ![CI](https://github.com/phmacieldev/finance-api/actions/workflows/ci.yml/badge.svg)
+![Java](https://img.shields.io/badge/Java-21-orange?logo=openjdk)
+![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.0.6-6db33f?logo=springboot)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql)
+![Coverage](https://img.shields.io/badge/coverage-JaCoCo-brightgreen?logo=jacoco)
 
 ---
 
