@@ -18,15 +18,22 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Rate limiting por IP nos endpoints de autenticação sensíveis.
- * - /auth/login:              10 requisições por minuto
- * - /auth/esqueci-senha:       5 requisições por minuto
+ * - /auth/login:                    10 requisições por minuto
+ * - /auth/register:                  5 requisições por minuto
+ * - /auth/esqueci-senha:             5 requisições por minuto
+ * - /auth/reenviar-verificacao:      5 requisições por minuto
+ *
+ * O IP é lido do header X-Real-IP (setado pelo proxy/load balancer),
+ * com fallback para X-Forwarded-For e por último o IP direto da conexão.
  */
 @Component
 @Order(1)
 public class RateLimitFilter extends OncePerRequestFilter {
 
     private final Map<String, Bucket> loginBuckets      = new ConcurrentHashMap<>();
+    private final Map<String, Bucket> registerBuckets   = new ConcurrentHashMap<>();
     private final Map<String, Bucket> esqueciSenhaBuckets = new ConcurrentHashMap<>();
+    private final Map<String, Bucket> reenviarBuckets   = new ConcurrentHashMap<>();
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -36,15 +43,23 @@ public class RateLimitFilter extends OncePerRequestFilter {
         String ip   = getClientIp(request);
 
         if (path.endsWith("/auth/login")) {
-            Bucket bucket = loginBuckets.computeIfAbsent(ip, k -> newBucket(10));
-            if (!bucket.tryConsume(1)) {
+            if (!loginBuckets.computeIfAbsent(ip, k -> newBucket(10)).tryConsume(1)) {
                 rejectRequest(response, "Muitas tentativas de login. Aguarde 1 minuto.");
                 return;
             }
+        } else if (path.endsWith("/auth/register")) {
+            if (!registerBuckets.computeIfAbsent(ip, k -> newBucket(5)).tryConsume(1)) {
+                rejectRequest(response, "Muitos cadastros do mesmo IP. Aguarde 1 minuto.");
+                return;
+            }
         } else if (path.endsWith("/auth/esqueci-senha")) {
-            Bucket bucket = esqueciSenhaBuckets.computeIfAbsent(ip, k -> newBucket(5));
-            if (!bucket.tryConsume(1)) {
+            if (!esqueciSenhaBuckets.computeIfAbsent(ip, k -> newBucket(5)).tryConsume(1)) {
                 rejectRequest(response, "Muitas solicitações de recuperação de senha. Aguarde 1 minuto.");
+                return;
+            }
+        } else if (path.endsWith("/auth/reenviar-verificacao")) {
+            if (!reenviarBuckets.computeIfAbsent(ip, k -> newBucket(5)).tryConsume(1)) {
+                rejectRequest(response, "Muitos reenvios solicitados. Aguarde 1 minuto.");
                 return;
             }
         }
@@ -69,9 +84,16 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private String getClientIp(HttpServletRequest request) {
+        // X-Real-IP é setado pelo proxy/load balancer e não pode ser forjado pelo cliente
+        String realIp = request.getHeader("X-Real-IP");
+        if (realIp != null && !realIp.isBlank()) {
+            return realIp.trim();
+        }
+        // X-Forwarded-For como fallback — usamos o último IP da cadeia (mais confiável)
         String forwarded = request.getHeader("X-Forwarded-For");
         if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
+            String[] parts = forwarded.split(",");
+            return parts[parts.length - 1].trim();
         }
         return request.getRemoteAddr();
     }

@@ -18,6 +18,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Set;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
@@ -41,15 +43,27 @@ public class ExtratoController {
         this.xlsxImportService = xlsxImportService;
     }
 
+    private static final Set<String> ALLOWED_MIME_TYPES = Set.of(
+            "text/csv", "text/plain", "application/csv",
+            "application/vnd.ms-excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+
     @Operation(summary = "Importar extrato (CSV ou XLSX — auto-detectado pelo nome do arquivo)")
     @PostMapping("/importar")
     @ResponseStatus(HttpStatus.CREATED)
     public ExtratoImportResultDTO importar(
             @RequestParam("file") MultipartFile file,
             @RequestParam(required = false) UUID contaBancariaId) {
+        if (file.isEmpty()) {
+            throw new IllegalArgumentException("Arquivo vazio");
+        }
+        String contentType = file.getContentType() != null ? file.getContentType().toLowerCase() : "";
+        if (!ALLOWED_MIME_TYPES.contains(contentType)) {
+            throw new IllegalArgumentException("Tipo de arquivo não permitido. Envie um CSV ou XLSX.");
+        }
         String nome = file.getOriginalFilename() != null
                 ? file.getOriginalFilename().toLowerCase() : "";
-
         if (nome.endsWith(".xlsx") || nome.endsWith(".xls")) {
             return xlsxImportService.importar(file, contaBancariaId);
         }
