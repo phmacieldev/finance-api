@@ -1,5 +1,7 @@
 package com.financeiro_api.Dashboard.dto;
 
+import com.financeiro_api.Extrato.dto.ExtratoResponseDTO;
+
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -10,6 +12,7 @@ public record DashboardDTO(
         BigDecimal totalSaidas,
         BigDecimal saldoMes,
         BigDecimal saldoAtual,
+        BigDecimal saldoTotal,
         BigDecimal totalEntradasMesAnterior,
         BigDecimal totalSaidasMesAnterior,
         BigDecimal variacaoEntradas,
@@ -17,5 +20,6 @@ public record DashboardDTO(
         int transacoesSemCategoria,
         List<FluxoDiarioDTO> fluxoDiario,
         List<TopCategoriaDTO> topDespesas,
-        List<TopCategoriaDTO> topReceitas
+        List<TopCategoriaDTO> topReceitas,
+        List<ExtratoResponseDTO> ultimosLancamentos
 ) {}

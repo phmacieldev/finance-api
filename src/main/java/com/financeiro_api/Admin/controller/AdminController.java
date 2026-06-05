@@ -4,6 +4,7 @@ import com.financeiro_api.Admin.dto.AdminCriarEmpresaDTO;
 import com.financeiro_api.Admin.dto.AdminEnterpriseDTO;
 import com.financeiro_api.Admin.dto.AdminUserDTO;
 import com.financeiro_api.Admin.service.AdminService;
+import com.financeiro_api.Demo.DemoSeedService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -20,9 +21,11 @@ import java.util.UUID;
 public class AdminController {
 
     private final AdminService service;
+    private final DemoSeedService demoSeedService;
 
-    public AdminController(AdminService service) {
+    public AdminController(AdminService service, DemoSeedService demoSeedService) {
         this.service = service;
+        this.demoSeedService = demoSeedService;
     }
 
     @Operation(summary = "Criar empresa com usuário CEO inicial")
@@ -105,5 +108,12 @@ public class AdminController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deletarEmpresa(@PathVariable UUID id) {
         service.deletarEmpresa(id);
+    }
+
+    @Operation(summary = "Popular empresa com dados de demonstração (6 meses de extratos, categorias e previsões)")
+    @PostMapping("/empresas/{id}/seed")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void seedDemo(@PathVariable UUID id) {
+        demoSeedService.seed(id);
     }
 }
