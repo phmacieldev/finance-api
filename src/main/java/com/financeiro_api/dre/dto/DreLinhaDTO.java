@@ -7,5 +7,5 @@ public record DreLinhaDTO(
         String label,
         BigDecimal valor,
         boolean ehSubtotal,
-        List<String> categorias
+        List<DreCategoriaTotalDTO> categorias
 ) {}
