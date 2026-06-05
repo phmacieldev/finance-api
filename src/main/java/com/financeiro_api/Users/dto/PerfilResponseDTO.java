@@ -13,6 +13,8 @@ public record PerfilResponseDTO(
         UUID enterpriseId,
         String enterpriseName,
         String cnpj,
+        String cpf,
+        String tipoPessoa,
         String plan,
         boolean emailVerificado
 ) {
@@ -23,10 +25,12 @@ public record PerfilResponseDTO(
                 user.getName(),
                 user.getEmail(),
                 user.getRole().name(),
-                e != null ? e.getId()       : null,
-                e != null ? e.getName()     : null,
-                e != null ? e.getCnpj()     : null,
-                e != null ? e.getPlan().name() : null,
+                e != null ? e.getId()                : null,
+                e != null ? e.getName()              : null,
+                e != null ? e.getCnpj()              : null,
+                e != null ? e.getCpf()               : null,
+                e != null ? e.getTipoPessoa().name() : null,
+                e != null ? e.getPlan().name()       : null,
                 user.isEmailVerificado()
         );
     }

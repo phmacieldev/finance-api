@@ -6,6 +6,7 @@ import com.financeiro_api.Relatorio.dto.RelatorioMensalDTO;
 import com.financeiro_api.Relatorio.dto.RelatorioMensalItemDTO;
 import com.financeiro_api.shared.TenantContext;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -23,6 +24,7 @@ public class RelatorioService {
         this.extratoRepository = extratoRepository;
     }
 
+    @Transactional(readOnly = true)
     public RelatorioMensalDTO gerarRelatorioMensal(int meses) {
         LocalDate hoje = LocalDate.now();
         LocalDate inicio = hoje.minusMonths(meses - 1L).withDayOfMonth(1);

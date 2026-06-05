@@ -2,6 +2,8 @@ package com.financeiro_api.Extrato.controller;
 
 import com.financeiro_api.Extrato.dto.AtribuirCategoriaDTO;
 import com.financeiro_api.Extrato.dto.AtribuirContaDTO;
+import com.financeiro_api.Extrato.dto.CriarExtratoDTO;
+import com.financeiro_api.Extrato.dto.EditarExtratoDTO;
 import com.financeiro_api.Extrato.dto.ExtratoImportResultDTO;
 import com.financeiro_api.Extrato.dto.ExtratoResponseDTO;
 import com.financeiro_api.Extrato.service.CsvImportService;
@@ -52,6 +54,20 @@ public class ExtratoController {
             return xlsxImportService.importar(file, contaBancariaId);
         }
         return csvImportService.importar(file, contaBancariaId);
+    }
+
+    @Operation(summary = "Criar lançamento manual")
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    public ExtratoResponseDTO criar(@RequestBody @Valid CriarExtratoDTO dto) {
+        return service.criarManual(dto);
+    }
+
+    @Operation(summary = "Editar lançamento")
+    @PatchMapping("/{id}")
+    public ExtratoResponseDTO editar(@PathVariable UUID id,
+                                      @RequestBody EditarExtratoDTO dto) {
+        return service.editar(id, dto);
     }
 
     @GetMapping

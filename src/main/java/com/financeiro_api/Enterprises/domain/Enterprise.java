@@ -23,8 +23,16 @@ public class Enterprise {
     @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(nullable = false, length = 18, unique = true)
+    @Column(length = 18, unique = true)
     private String cnpj;
+
+    @Column(length = 14, unique = true)
+    private String cpf;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
+    private TipoPessoa tipoPessoa = TipoPessoa.JURIDICA;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)

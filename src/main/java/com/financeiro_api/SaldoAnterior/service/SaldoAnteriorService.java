@@ -17,6 +17,7 @@ public class SaldoAnteriorService {
         this.repository = repository;
     }
 
+    @Transactional(readOnly = true)
     public SaldoAnteriorResponseDTO buscar(int mes, int ano) {
         return repository
                 .findByEnterpriseIdAndMesAndAno(TenantContext.get(), mes, ano)
