@@ -1,6 +1,7 @@
 package com.financeiro_api.Users.controller;
 
 import com.financeiro_api.Enterprises.dto.EnterpriseUpdateDTO;
+import com.financeiro_api.UserEnterprise.dto.EmpresaMembroDTO;
 import com.financeiro_api.Users.dto.AlterarSenhaDTO;
 import com.financeiro_api.Users.dto.AtualizarPerfilDTO;
 import com.financeiro_api.Users.dto.PerfilResponseDTO;
@@ -11,6 +12,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @Tag(name = "Perfil", description = "Dados do usuário autenticado e empresa")
 @RestController
@@ -45,6 +48,12 @@ public class PerfilController {
     public PerfilResponseDTO atualizarEmpresa(@AuthenticationPrincipal String email,
                                               @RequestBody EnterpriseUpdateDTO dto) {
         return userService.atualizarEmpresa(TenantContext.get(), email, dto);
+    }
+
+    @Operation(summary = "Listar todas as empresas do usuário autenticado")
+    @GetMapping("/empresas")
+    public List<EmpresaMembroDTO> listarEmpresas(@AuthenticationPrincipal String email) {
+        return userService.listarEmpresasDoUsuario(email);
     }
 
     @DeleteMapping
