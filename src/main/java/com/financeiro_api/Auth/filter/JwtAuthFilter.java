@@ -4,6 +4,7 @@ import com.financeiro_api.Auth.service.JwtService;
 import com.financeiro_api.shared.TenantContext;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -29,27 +31,23 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-        String authHeader = request.getHeader("Authorization");
+        String token = extractToken(request);
 
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7);
+        if (token != null && jwtService.tokenValido(token)) {
+            String email = jwtService.extrairEmail(token);
+            String role = jwtService.extrairRole(token);
 
-            if (jwtService.tokenValido(token)) {
-                String email = jwtService.extrairEmail(token);
-                String role = jwtService.extrairRole(token);
-
-                var auth = new UsernamePasswordAuthenticationToken(
-                        email,
-                        null,
-                        List.of(new SimpleGrantedAuthority("ROLE_" + role))
-                );
-                SecurityContextHolder.getContext().setAuthentication(auth);
-                TenantContext.setUserId(jwtService.extrairUserId(token));
-                TenantContext.setEmail(email);
-                UUID enterpriseId = jwtService.extrairEnterpriseId(token);
-                if (enterpriseId != null) {
-                    TenantContext.set(enterpriseId);
-                }
+            var auth = new UsernamePasswordAuthenticationToken(
+                    email,
+                    null,
+                    List.of(new SimpleGrantedAuthority("ROLE_" + role))
+            );
+            SecurityContextHolder.getContext().setAuthentication(auth);
+            TenantContext.setUserId(jwtService.extrairUserId(token));
+            TenantContext.setEmail(email);
+            UUID enterpriseId = jwtService.extrairEnterpriseId(token);
+            if (enterpriseId != null) {
+                TenantContext.set(enterpriseId);
             }
         }
 
@@ -58,5 +56,22 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         } finally {
             TenantContext.clear();
         }
+    }
+
+    private String extractToken(HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            return authHeader.substring(7);
+        }
+        // Fallback: httpOnly cookie
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            return Arrays.stream(cookies)
+                    .filter(c -> "financeiro_token".equals(c.getName()))
+                    .map(Cookie::getValue)
+                    .findFirst()
+                    .orElse(null);
+        }
+        return null;
     }
 }
