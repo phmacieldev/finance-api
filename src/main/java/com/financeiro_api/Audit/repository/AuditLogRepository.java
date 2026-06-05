@@ -1,6 +1,5 @@
 package com.financeiro_api.Audit.repository;
 
-import com.financeiro_api.Audit.domain.AuditAction;
 import com.financeiro_api.Audit.domain.AuditLog;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -13,18 +12,28 @@ import java.util.UUID;
 
 public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
 
-    @Query("""
-            SELECT l FROM AuditLog l
-            WHERE (:action IS NULL OR l.action = :action)
-              AND (:userId IS NULL OR l.userId = :userId)
-              AND (:enterpriseId IS NULL OR l.enterpriseId = :enterpriseId)
-              AND (:from IS NULL OR l.createdAt >= :from)
-              AND (:to IS NULL OR l.createdAt <= :to)
-            """)
+    @Query(value = """
+            SELECT * FROM audit_logs
+            WHERE (:action IS NULL OR action = :action)
+              AND (:userId IS NULL OR user_id = :userId::uuid)
+              AND (:enterpriseId IS NULL OR enterprise_id = :enterpriseId::uuid)
+              AND (:from IS NULL OR created_at >= :from)
+              AND (:to IS NULL OR created_at <= :to)
+            ORDER BY created_at DESC
+            """,
+            countQuery = """
+            SELECT count(*) FROM audit_logs
+            WHERE (:action IS NULL OR action = :action)
+              AND (:userId IS NULL OR user_id = :userId::uuid)
+              AND (:enterpriseId IS NULL OR enterprise_id = :enterpriseId::uuid)
+              AND (:from IS NULL OR created_at >= :from)
+              AND (:to IS NULL OR created_at <= :to)
+            """,
+            nativeQuery = true)
     Page<AuditLog> buscarComFiltros(
-            @Param("action") AuditAction action,
-            @Param("userId") UUID userId,
-            @Param("enterpriseId") UUID enterpriseId,
+            @Param("action") String action,
+            @Param("userId") String userId,
+            @Param("enterpriseId") String enterpriseId,
             @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to,
             Pageable pageable

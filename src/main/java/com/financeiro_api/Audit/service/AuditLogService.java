@@ -43,7 +43,11 @@ public class AuditLogService {
     @Transactional(readOnly = true)
     public Page<AuditLogDTO> listar(AuditAction action, UUID userId, UUID enterpriseId,
                                     LocalDateTime from, LocalDateTime to, Pageable pageable) {
-        return repository.buscarComFiltros(action, userId, enterpriseId, from, to, pageable)
-                .map(AuditLogDTO::from);
+        return repository.buscarComFiltros(
+                action != null ? action.name() : null,
+                userId != null ? userId.toString() : null,
+                enterpriseId != null ? enterpriseId.toString() : null,
+                from, to, pageable
+        ).map(AuditLogDTO::from);
     }
 }
