@@ -48,6 +48,7 @@ public class SecurityConfig {
                                 "/api/v1/auth/esqueci-senha", "/api/v1/auth/resetar-senha",
                                 "/api/v1/auth/refresh").permitAll()
                         .requestMatchers("/api/v1/auth/logout").authenticated()
+                        .requestMatchers("/api/v1/auth/switch-empresa/**").authenticated()
                         .requestMatchers("/api/v1/admin/**").hasRole("PLATFORM_ADMIN")
                         .requestMatchers("/api/v1/audit-logs", "/api/v1/audit-logs/**").hasRole("PLATFORM_ADMIN")
                         .requestMatchers("/api/v1/me/**").authenticated()

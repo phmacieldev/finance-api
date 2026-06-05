@@ -36,6 +36,10 @@ public enum AuditAction {
     CONTA_BANCARIA_CREATED,
     CONTA_BANCARIA_DELETED,
 
+    // Multi-empresa
+    ENTERPRISE_SWITCH,
+    USER_MEMBER_ADDED,
+
     // Admin
     ENTERPRISE_APPROVED,
     ENTERPRISE_REJECTED,

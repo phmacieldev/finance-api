@@ -28,7 +28,7 @@ public class RefreshTokenService {
     }
 
     @Transactional
-    public RefreshToken criar(User user) {
+    public RefreshToken criar(User user, UUID enterpriseId) {
         repository.revokeAllByUserId(user.getId());
 
         byte[] bytes = new byte[48];
@@ -38,12 +38,13 @@ public class RefreshTokenService {
         return repository.save(RefreshToken.builder()
                 .token(token)
                 .user(user)
+                .enterpriseId(enterpriseId)
                 .expiresAt(LocalDateTime.now().plusDays(refreshExpirationDays))
                 .build());
     }
 
     @Transactional
-    public User validarEObter(String token) {
+    public RefreshToken validarEObter(String token) {
         RefreshToken rt = repository.findByToken(token)
                 .orElseThrow(() -> new BadCredentialsException("Refresh token inválido"));
 
@@ -56,7 +57,7 @@ public class RefreshTokenService {
 
         rt.setRevoked(true);
         repository.save(rt);
-        return rt.getUser();
+        return rt;
     }
 
     @Transactional

@@ -1,5 +1,6 @@
 package com.financeiro_api.Users.controller;
 
+import com.financeiro_api.Users.dto.AdicionarMembroDTO;
 import com.financeiro_api.Users.dto.UserInviteDTO;
 import com.financeiro_api.Users.dto.UserResponseDTO;
 import com.financeiro_api.Users.dto.UserUpdateDTO;
@@ -42,6 +43,14 @@ public class UserController {
                                   @RequestBody UserUpdateDTO dto,
                                   @AuthenticationPrincipal String requesterEmail) {
         return userService.editarUsuario(TenantContext.get(), id, dto, requesterEmail);
+    }
+
+    @Operation(summary = "Adicionar usuário existente como membro da empresa")
+    @PostMapping("/membros")
+    @ResponseStatus(HttpStatus.CREATED)
+    public UserResponseDTO adicionarMembro(@RequestBody AdicionarMembroDTO dto,
+                                           @AuthenticationPrincipal String requesterEmail) {
+        return userService.adicionarMembro(TenantContext.get(), dto, requesterEmail);
     }
 
     @DeleteMapping("/{id}")

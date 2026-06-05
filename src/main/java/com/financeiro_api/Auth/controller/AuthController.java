@@ -98,6 +98,18 @@ public class AuthController {
         return result;
     }
 
+    @Operation(summary = "Trocar empresa ativa — reemite JWT para outra empresa do usuário")
+    @PostMapping("/switch-empresa/{enterpriseId}")
+    public TokenResponseDTO switchEmpresa(
+            @PathVariable java.util.UUID enterpriseId,
+            @CookieValue(value = "financeiro_refresh", required = false) String refreshCookie,
+            @org.springframework.security.core.annotation.AuthenticationPrincipal String email,
+            HttpServletResponse response) {
+        TokenResponseDTO result = authService.switchEmpresa(email, enterpriseId, refreshCookie);
+        setCookies(response, result);
+        return result;
+    }
+
     @Operation(summary = "Logout — revoga o refresh token ativo")
     @PostMapping("/logout")
     @ResponseStatus(HttpStatus.NO_CONTENT)

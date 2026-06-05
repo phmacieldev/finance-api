@@ -6,10 +6,14 @@ import com.financeiro_api.Enterprises.domain.Enterprise;
 import com.financeiro_api.Enterprises.domain.TipoPessoa;
 import com.financeiro_api.Enterprises.dto.EnterpriseUpdateDTO;
 import com.financeiro_api.Enterprises.repository.EnterpriseRepository;
+import com.financeiro_api.UserEnterprise.domain.UserEnterprise;
+import com.financeiro_api.UserEnterprise.dto.EmpresaMembroDTO;
+import com.financeiro_api.UserEnterprise.repository.UserEnterpriseRepository;
 import com.financeiro_api.shared.validation.CpfValidator;
 import com.financeiro_api.shared.validation.CnpjValidator;
 import com.financeiro_api.Users.domain.Role;
 import com.financeiro_api.Users.domain.User;
+import com.financeiro_api.Users.dto.AdicionarMembroDTO;
 import com.financeiro_api.Users.dto.AlterarSenhaDTO;
 import com.financeiro_api.Users.dto.AtualizarPerfilDTO;
 import com.financeiro_api.Users.dto.PerfilResponseDTO;
@@ -33,15 +37,18 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final EnterpriseRepository enterpriseRepository;
+    private final UserEnterpriseRepository userEnterpriseRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuditLogService auditLogService;
 
     public UserService(UserRepository userRepository,
                        EnterpriseRepository enterpriseRepository,
+                       UserEnterpriseRepository userEnterpriseRepository,
                        PasswordEncoder passwordEncoder,
                        AuditLogService auditLogService) {
         this.userRepository = userRepository;
         this.enterpriseRepository = enterpriseRepository;
+        this.userEnterpriseRepository = userEnterpriseRepository;
         this.passwordEncoder = passwordEncoder;
         this.auditLogService = auditLogService;
     }
@@ -98,6 +105,16 @@ public class UserService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<EmpresaMembroDTO> listarEmpresasDoUsuario(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Usuário não encontrado"));
+        return userEnterpriseRepository.findAllByUserIdFetchEnterprise(user.getId())
+                .stream()
+                .map(EmpresaMembroDTO::from)
+                .toList();
+    }
+
     @Transactional
     public UserResponseDTO convidar(UUID enterpriseId, UserInviteDTO dto, String requesterEmail) {
         User requester = userRepository.findByEmail(requesterEmail)
@@ -105,7 +122,6 @@ public class UserService {
 
         Role targetRole = dto.role() != null ? dto.role() : Role.USER;
 
-        // OWNER só pode convidar USER ou OWNER — não pode criar CEO
         if (requester.getRole() == Role.OWNER && targetRole == Role.CEO) {
             throw new AcessoNegadoException("OWNER não pode criar usuários com papel CEO");
         }
@@ -124,8 +140,46 @@ public class UserService {
                 .role(targetRole)
                 .build();
         User saved = userRepository.save(user);
+
+        userEnterpriseRepository.save(UserEnterprise.builder()
+                .user(saved)
+                .enterprise(enterprise)
+                .role(targetRole)
+                .build());
+
         auditLogService.log(AuditAction.USER_CREATED, "User", saved.getId().toString());
         return new UserResponseDTO(saved.getId(), saved.getName(), saved.getEmail(), saved.getRole(), enterpriseId);
+    }
+
+    @Transactional
+    public UserResponseDTO adicionarMembro(UUID enterpriseId, AdicionarMembroDTO dto, String requesterEmail) {
+        User requester = userRepository.findByEmail(requesterEmail)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Usuário requisitante não encontrado"));
+
+        Role targetRole = dto.role() != null ? dto.role() : Role.USER;
+
+        if (requester.getRole() == Role.OWNER && targetRole == Role.CEO) {
+            throw new AcessoNegadoException("OWNER não pode adicionar usuários com papel CEO");
+        }
+
+        User target = userRepository.findByEmail(dto.email())
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Usuário não encontrado: " + dto.email()));
+
+        if (userEnterpriseRepository.existsByUser_IdAndEnterprise_Id(target.getId(), enterpriseId)) {
+            throw new ConflitoException("Usuário já é membro desta empresa");
+        }
+
+        Enterprise enterprise = enterpriseRepository.findById(enterpriseId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Empresa não encontrada"));
+
+        userEnterpriseRepository.save(UserEnterprise.builder()
+                .user(target)
+                .enterprise(enterprise)
+                .role(targetRole)
+                .build());
+
+        auditLogService.log(AuditAction.USER_MEMBER_ADDED, "User", target.getId().toString());
+        return new UserResponseDTO(target.getId(), target.getName(), target.getEmail(), targetRole, enterpriseId);
     }
 
     @Transactional
@@ -135,11 +189,9 @@ public class UserService {
         User user = userRepository.findByIdAndEnterprise_Id(id, enterpriseId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Usuário não encontrado: " + id));
 
-        // OWNER não pode alterar CEO
         if (requester.getRole() == Role.OWNER && user.getRole() == Role.CEO) {
             throw new AcessoNegadoException("OWNER não pode alterar um usuário CEO");
         }
-        // OWNER não pode promover alguém a CEO
         if (requester.getRole() == Role.OWNER && dto.role() == Role.CEO) {
             throw new AcessoNegadoException("OWNER não pode promover um usuário a CEO");
         }
@@ -158,6 +210,11 @@ public class UserService {
         }
         if (dto.role() != null) {
             user.setRole(dto.role());
+            userEnterpriseRepository.findByUser_IdAndEnterprise_Id(user.getId(), enterpriseId)
+                    .ifPresent(ue -> {
+                        ue.setRole(dto.role());
+                        userEnterpriseRepository.save(ue);
+                    });
         }
         User saved = userRepository.save(user);
         auditLogService.log(AuditAction.USER_UPDATED, "User", saved.getId().toString());
@@ -174,7 +231,6 @@ public class UserService {
         if (user.getEmail().equalsIgnoreCase(requesterEmail)) {
             throw new ConflitoException("Não é possível remover seu próprio usuário");
         }
-        // OWNER não pode deletar CEO
         if (requester.getRole() == Role.OWNER && user.getRole() == Role.CEO) {
             throw new AcessoNegadoException("OWNER não pode remover um usuário CEO");
         }
