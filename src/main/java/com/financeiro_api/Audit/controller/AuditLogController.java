@@ -5,7 +5,6 @@ import com.financeiro_api.Audit.dto.AuditLogDTO;
 import com.financeiro_api.Audit.service.AuditLogService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
@@ -37,6 +36,6 @@ public class AuditLogController {
         LocalDateTime toDt = to != null ? to.atTime(23, 59, 59) : null;
 
         return service.listar(action, userId, enterpriseId, fromDt, toDt,
-                PageRequest.of(page, size, Sort.by("createdAt").descending()));
+                PageRequest.of(page, size));
     }
 }
