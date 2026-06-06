@@ -127,8 +127,8 @@ public class AuthController {
             response.addHeader(HttpHeaders.SET_COOKIE,
                     ResponseCookie.from("financeiro_token", data.token())
                             .httpOnly(true)
-                            .secure(cookieSecure)
-                            .sameSite("Strict")
+                            .secure(true)
+                            .sameSite("None")
                             .maxAge(Duration.ofSeconds(900))
                             .path("/")
                             .build().toString());
@@ -137,8 +137,8 @@ public class AuthController {
             response.addHeader(HttpHeaders.SET_COOKIE,
                     ResponseCookie.from("financeiro_refresh", data.refreshToken())
                             .httpOnly(true)
-                            .secure(cookieSecure)
-                            .sameSite("Strict")
+                            .secure(true)
+                            .sameSite("None")
                             .maxAge(Duration.ofDays(30))
                             .path("/api/v1/auth")
                             .build().toString());
@@ -149,16 +149,16 @@ public class AuthController {
         response.addHeader(HttpHeaders.SET_COOKIE,
                 ResponseCookie.from("financeiro_token", "")
                         .httpOnly(true)
-                        .secure(cookieSecure)
-                        .sameSite("Strict")
+                        .secure(true)
+                        .sameSite("None")
                         .maxAge(0)
                         .path("/")
                         .build().toString());
         response.addHeader(HttpHeaders.SET_COOKIE,
                 ResponseCookie.from("financeiro_refresh", "")
                         .httpOnly(true)
-                        .secure(cookieSecure)
-                        .sameSite("Strict")
+                        .secure(true)
+                        .sameSite("None")
                         .maxAge(0)
                         .path("/api/v1/auth")
                         .build().toString());
