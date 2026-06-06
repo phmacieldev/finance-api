@@ -61,13 +61,43 @@ public class AuthService {
 
     @Transactional
     public TokenResponseDTO registrar(RegisterDTO dto) {
-        if (userRepository.existsByEmail(dto.email())) {
-            throw new ConflitoException("E-mail já cadastrado: " + dto.email());
-        }
         if (enterpriseRepository.existsByCnpj(dto.cnpj())) {
             throw new ConflitoException("CNPJ já cadastrado: " + dto.cnpj());
         }
 
+        // Usuário já existe → adicionar nova empresa ao cadastro existente
+        if (userRepository.existsByEmail(dto.email())) {
+            User user = userRepository.findByEmail(dto.email())
+                    .orElseThrow(() -> new ConflitoException("E-mail já cadastrado: " + dto.email()));
+
+            if (!passwordEncoder.matches(dto.password(), user.getPassword())) {
+                throw new ConflitoException("Senha incorreta para o e-mail informado");
+            }
+
+            Enterprise enterprise = enterpriseRepository.save(
+                    Enterprise.builder()
+                            .name(dto.enterpriseName())
+                            .cnpj(dto.cnpj())
+                            .status(EnterpriseStatus.PENDENTE)
+                            .build()
+            );
+
+            userEnterpriseRepository.save(UserEnterprise.builder()
+                    .user(user)
+                    .enterprise(enterprise)
+                    .role(Role.CEO)
+                    .build());
+
+            emailService.notificarNovaEmpresa(enterprise.getName(), enterprise.getCnpj(), user.getEmail());
+
+            TenantContext.setUserId(user.getId());
+            TenantContext.setEmail(user.getEmail());
+            auditLogService.log(AuditAction.USER_REGISTER, "Enterprise", enterprise.getId().toString());
+
+            return new TokenResponseDTO(user.getEmail(), user.getRole().name());
+        }
+
+        // Novo usuário → fluxo normal
         Enterprise enterprise = enterpriseRepository.save(
                 Enterprise.builder()
                         .name(dto.enterpriseName())
