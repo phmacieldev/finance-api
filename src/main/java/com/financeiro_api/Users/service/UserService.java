@@ -54,10 +54,21 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public PerfilResponseDTO buscarPerfil(String email) {
-        User user = userRepository.findByEmailWithEnterprise(email)
+    public PerfilResponseDTO buscarPerfil(String email, UUID enterpriseId) {
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Usuário não encontrado"));
-        return PerfilResponseDTO.from(user);
+
+        if (enterpriseId != null) {
+            UserEnterprise membership = userEnterpriseRepository
+                    .findByUserIdAndEnterpriseIdFetchEnterprise(user.getId(), enterpriseId)
+                    .orElse(null);
+            if (membership != null) {
+                return PerfilResponseDTO.from(user, membership.getEnterprise(), membership.getRole().name());
+            }
+        }
+
+        // fallback: empresa padrão do usuário (PLATFORM_ADMIN não tem empresa)
+        return PerfilResponseDTO.from(user, user.getEnterprise(), user.getRole().name());
     }
 
     @Transactional
@@ -76,7 +87,8 @@ public class UserService {
             user.setEmail(dto.email().trim().toLowerCase());
         }
 
-        return PerfilResponseDTO.from(userRepository.save(user));
+        User saved = userRepository.save(user);
+        return PerfilResponseDTO.from(saved, saved.getEnterprise(), saved.getRole().name());
     }
 
     @Transactional
@@ -300,6 +312,6 @@ public class UserService {
 
         User user = userRepository.findByEmailWithEnterprise(email)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Usuário não encontrado"));
-        return PerfilResponseDTO.from(user);
+        return PerfilResponseDTO.from(user, enterprise, user.getRole().name());
     }
 }
