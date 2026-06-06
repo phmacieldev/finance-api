@@ -94,7 +94,8 @@ public class AuthService {
             TenantContext.setEmail(user.getEmail());
             auditLogService.log(AuditAction.USER_REGISTER, "Enterprise", enterprise.getId().toString());
 
-            return new TokenResponseDTO(user.getEmail(), user.getRole().name());
+            // E-mail já verificado — retorna sem emailPendente para o front exibir mensagem de aprovação
+            return new TokenResponseDTO(null, null, user.getEmail(), user.getRole().name());
         }
 
         // Novo usuário → fluxo normal
