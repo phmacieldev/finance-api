@@ -18,13 +18,12 @@ public record PerfilResponseDTO(
         String plan,
         boolean emailVerificado
 ) {
-    public static PerfilResponseDTO from(User user) {
-        Enterprise e = user.getEnterprise();
+    public static PerfilResponseDTO from(User user, Enterprise e, String role) {
         return new PerfilResponseDTO(
                 user.getId(),
                 user.getName(),
                 user.getEmail(),
-                user.getRole().name(),
+                role,
                 e != null ? e.getId()                : null,
                 e != null ? e.getName()              : null,
                 e != null ? e.getCnpj()              : null,

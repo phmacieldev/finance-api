@@ -28,7 +28,7 @@ public class PerfilController {
 
     @GetMapping
     public PerfilResponseDTO perfil(@AuthenticationPrincipal String email) {
-        return userService.buscarPerfil(email);
+        return userService.buscarPerfil(email, TenantContext.get());
     }
 
     @PatchMapping
