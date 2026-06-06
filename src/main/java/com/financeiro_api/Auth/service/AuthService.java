@@ -10,7 +10,10 @@ import com.financeiro_api.Auth.dto.ResetarSenhaDTO;
 import com.financeiro_api.Auth.dto.TokenResponseDTO;
 import com.financeiro_api.Enterprises.domain.Enterprise;
 import com.financeiro_api.Enterprises.domain.EnterpriseStatus;
+import com.financeiro_api.Enterprises.domain.TipoPessoa;
 import com.financeiro_api.Enterprises.repository.EnterpriseRepository;
+import com.financeiro_api.shared.validation.CnpjValidator;
+import com.financeiro_api.shared.validation.CpfValidator;
 import com.financeiro_api.UserEnterprise.domain.UserEnterprise;
 import com.financeiro_api.UserEnterprise.repository.UserEnterpriseRepository;
 import com.financeiro_api.Users.domain.Role;
@@ -61,8 +64,28 @@ public class AuthService {
 
     @Transactional
     public TokenResponseDTO registrar(RegisterDTO dto) {
-        if (enterpriseRepository.existsByCnpj(dto.cnpj())) {
-            throw new ConflitoException("CNPJ já cadastrado: " + dto.cnpj());
+        TipoPessoa tipo = dto.tipoPessoaEfetiva();
+        String cnpj = null;
+        String cpf = null;
+
+        if (tipo == TipoPessoa.JURIDICA) {
+            String digits = dto.cnpj() != null ? dto.cnpj().replaceAll("[.\\-/]", "") : "";
+            if (!new CnpjValidator().isValid(digits, null)) {
+                throw new ConflitoException("CNPJ inválido");
+            }
+            if (enterpriseRepository.existsByCnpj(digits)) {
+                throw new ConflitoException("CNPJ já cadastrado: " + digits);
+            }
+            cnpj = digits;
+        } else {
+            String digits = dto.cpf() != null ? dto.cpf().replaceAll("[.\\-]", "") : "";
+            if (!new CpfValidator().isValid(digits, null)) {
+                throw new ConflitoException("CPF inválido");
+            }
+            if (enterpriseRepository.existsByCpf(digits)) {
+                throw new ConflitoException("CPF já cadastrado: " + digits);
+            }
+            cpf = digits;
         }
 
         // Usuário já existe → adicionar nova empresa ao cadastro existente
@@ -77,7 +100,9 @@ public class AuthService {
             Enterprise enterprise = enterpriseRepository.save(
                     Enterprise.builder()
                             .name(dto.enterpriseName())
-                            .cnpj(dto.cnpj())
+                            .cnpj(cnpj)
+                            .cpf(cpf)
+                            .tipoPessoa(tipo)
                             .status(EnterpriseStatus.PENDENTE)
                             .build()
             );
@@ -88,7 +113,8 @@ public class AuthService {
                     .role(Role.CEO)
                     .build());
 
-            emailService.notificarNovaEmpresa(enterprise.getName(), enterprise.getCnpj(), user.getEmail());
+            emailService.notificarNovaEmpresa(enterprise.getName(),
+                    cnpj != null ? cnpj : cpf, user.getEmail());
 
             TenantContext.setUserId(user.getId());
             TenantContext.setEmail(user.getEmail());
@@ -102,7 +128,9 @@ public class AuthService {
         Enterprise enterprise = enterpriseRepository.save(
                 Enterprise.builder()
                         .name(dto.enterpriseName())
-                        .cnpj(dto.cnpj())
+                        .cnpj(cnpj)
+                        .cpf(cpf)
+                        .tipoPessoa(tipo)
                         .status(EnterpriseStatus.PENDENTE)
                         .build()
         );
