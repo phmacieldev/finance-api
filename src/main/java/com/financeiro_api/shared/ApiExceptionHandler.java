@@ -5,6 +5,7 @@ import com.financeiro_api.shared.exception.AcessoNegadoException;
 import com.financeiro_api.shared.LogMask;
 import com.financeiro_api.shared.exception.ConflitoException;
 import com.financeiro_api.shared.exception.RecursoNaoEncontradoException;
+import com.financeiro_api.shared.exception.ValidacaoException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -41,6 +42,12 @@ public class ApiExceptionHandler {
     @ResponseStatus(HttpStatus.FORBIDDEN)
     public ErroResponse acessoNegado(AcessoNegadoException ex) {
         return new ErroResponse(403, ex.getMessage());
+    }
+
+    @ExceptionHandler(ValidacaoException.class)
+    @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
+    public ErroResponse validacao(ValidacaoException ex) {
+        return new ErroResponse(422, ex.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
