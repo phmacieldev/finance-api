@@ -10,6 +10,8 @@ import com.financeiro_api.Enterprises.domain.EnterpriseStatus;
 import com.financeiro_api.Enterprises.domain.Plan;
 import com.financeiro_api.Enterprises.domain.TipoPessoa;
 import com.financeiro_api.Enterprises.repository.EnterpriseRepository;
+import com.financeiro_api.UserEnterprise.domain.UserEnterprise;
+import com.financeiro_api.UserEnterprise.repository.UserEnterpriseRepository;
 import com.financeiro_api.shared.validation.CnpjValidator;
 import com.financeiro_api.shared.validation.CpfValidator;
 import com.financeiro_api.Users.domain.Role;
@@ -30,17 +32,20 @@ public class AdminService {
 
     private final EnterpriseRepository enterpriseRepository;
     private final UserRepository userRepository;
+    private final UserEnterpriseRepository userEnterpriseRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuditLogService auditLogService;
     private final JdbcTemplate jdbc;
 
     public AdminService(EnterpriseRepository enterpriseRepository,
                         UserRepository userRepository,
+                        UserEnterpriseRepository userEnterpriseRepository,
                         PasswordEncoder passwordEncoder,
                         AuditLogService auditLogService,
                         JdbcTemplate jdbc) {
         this.enterpriseRepository = enterpriseRepository;
         this.userRepository = userRepository;
+        this.userEnterpriseRepository = userEnterpriseRepository;
         this.passwordEncoder = passwordEncoder;
         this.auditLogService = auditLogService;
         this.jdbc = jdbc;
@@ -48,10 +53,6 @@ public class AdminService {
 
     @Transactional
     public AdminEnterpriseDTO criarEmpresa(AdminCriarEmpresaDTO dto) {
-        if (userRepository.existsByEmail(dto.adminEmail())) {
-            throw new ConflitoException("E-mail já está em uso: " + dto.adminEmail());
-        }
-
         TipoPessoa tipo = dto.tipoPessoaEfetiva();
         String cnpj = null;
         String cpf = null;
@@ -83,15 +84,28 @@ public class AdminService {
                 .build();
         Enterprise saved = enterpriseRepository.save(enterprise);
 
-        User admin = User.builder()
-                .enterprise(saved)
-                .name(dto.adminName().trim())
-                .email(dto.adminEmail().trim().toLowerCase())
-                .password(passwordEncoder.encode(dto.adminPassword()))
-                .role(Role.CEO)
-                .emailVerificado(true)
-                .build();
-        userRepository.save(admin);
+        String email = dto.adminEmail().trim().toLowerCase();
+        User admin = userRepository.findByEmail(email).orElseGet(() -> {
+            // Novo usuário — cria com os dados fornecidos
+            User novoUser = User.builder()
+                    .enterprise(saved)
+                    .name(dto.adminName().trim())
+                    .email(email)
+                    .password(passwordEncoder.encode(dto.adminPassword()))
+                    .role(Role.CEO)
+                    .emailVerificado(true)
+                    .build();
+            return userRepository.save(novoUser);
+        });
+
+        // Vincula usuário à empresa (novo ou existente)
+        if (!userEnterpriseRepository.existsByUser_IdAndEnterprise_Id(admin.getId(), saved.getId())) {
+            userEnterpriseRepository.save(UserEnterprise.builder()
+                    .user(admin)
+                    .enterprise(saved)
+                    .role(Role.CEO)
+                    .build());
+        }
 
         auditLogService.log(AuditAction.ENTERPRISE_APPROVED, "Enterprise", saved.getId().toString());
         return AdminEnterpriseDTO.from(saved);

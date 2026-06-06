@@ -14,6 +14,7 @@ import java.util.UUID;
 public interface EnterpriseRepository extends JpaRepository<Enterprise, UUID> {
     Optional<Enterprise> findByCnpj(String cnpj);
     boolean existsByCnpj(String cnpj);
+    boolean existsByCpf(String cpf);
     List<Enterprise> findAllByStatusOrderByCreatedAtAsc(EnterpriseStatus status);
     List<Enterprise> findAllByOrderByCreatedAtAsc();
 
