@@ -46,7 +46,7 @@ public class ExtratoImportHelper {
     }
 
     public boolean deveIgnorar(String lancamento) {
-        if (lancamento == null || lancamento.isBlank()) return true;
+        if (lancamento == null || lancamento.isBlank()) return false;
         String upper = lancamento.toUpperCase().trim();
         return SKIP_PREFIXES.stream().anyMatch(upper::startsWith);
     }
@@ -78,7 +78,6 @@ public class ExtratoImportHelper {
     }
 
     public ExtratoImportResultDTO salvarLote(List<Extrato> extratos, UUID tenantId) {
-        // Gera um ID único para este lote — permite desfazer a importação inteira
         UUID batchId = extratos.isEmpty() ? null : UUID.randomUUID();
         int importados = 0, duplicatas = 0, erros = 0;
 
@@ -115,25 +114,47 @@ public class ExtratoImportHelper {
                 .replaceAll("[óòôõö]", "o")
                 .replaceAll("[úùûü]", "u")
                 .replaceAll("[ç]", "c")
-                .replaceAll("[^a-z0-9]", "_")   // tudo que não é letra/número vira _
-                .replaceAll("_+", "_")           // colapsa múltiplos _
-                .replaceAll("^_|_$", "");        // remove _ inicial/final
+                .replaceAll("[^a-z0-9]", "_")
+                .replaceAll("_+", "_")
+                .replaceAll("^_|_$", "");
     }
 
-    // Detecta a linha do cabeçalho real (ignora metadados do banco)
+    /**
+     * Detecta a linha do cabeçalho real (ignora metadados do banco).
+     * Aceita colunas "valor", "credito" ou "debito" como indicador de cabeçalho.
+     * Retorna -1 se nenhum cabeçalho encontrado (usar fallback posicional).
+     */
     public int encontrarHeaderRow(String[] linhas, char separador) {
         for (int i = 0; i < Math.min(linhas.length, 20); i++) {
-            String linha = normalizarHeader(linhas[i]);
             String[] campos = linhas[i].split(String.valueOf(separador), -1);
-            // Linha de cabeçalho tem "data" no primeiro campo e "valor" em algum campo
-            if (campos.length >= 3) {
-                String primeiroNormalizado = normalizarHeader(campos[0]);
-                boolean temData = primeiroNormalizado.equals("data") || primeiroNormalizado.startsWith("data_");
-                boolean temValor = linha.contains("valor");
-                if (temData && temValor) return i;
+            if (campos.length >= 2) {
+                String primeiro = normalizarHeader(campos[0]);
+                boolean temData = primeiro.equals("data") || primeiro.startsWith("data_");
+                if (temData) {
+                    String linhaCompleta = normalizarHeader(linhas[i]);
+                    boolean temValorOuCredito = linhaCompleta.contains("valor")
+                            || linhaCompleta.contains("credito")
+                            || linhaCompleta.contains("debito");
+                    if (temValorOuCredito) return i;
+                }
             }
         }
-        return -1;
+        return -1; // sem cabeçalho — usar fallback posicional
+    }
+
+    /**
+     * Verifica se uma linha é um cabeçalho de seção (para suporte a múltiplas seções).
+     */
+    public boolean isHeaderRow(String linha, char separador) {
+        String[] campos = linha.split(String.valueOf(separador), -1);
+        if (campos.length < 2) return false;
+        String primeiro = normalizarHeader(campos[0]);
+        boolean temData = primeiro.equals("data") || primeiro.startsWith("data_");
+        String linhaCompleta = normalizarHeader(linha);
+        boolean temValorOuCredito = linhaCompleta.contains("valor")
+                || linhaCompleta.contains("credito")
+                || linhaCompleta.contains("debito");
+        return temData && temValorOuCredito;
     }
 
     public LocalDate parseData(String str) {
@@ -145,13 +166,28 @@ public class ExtratoImportHelper {
         throw new IllegalArgumentException("Formato de data não reconhecido: " + str);
     }
 
-    // Suporta formato brasileiro (1.234,56) e padrão (1234.56)
+    /**
+     * Suporta:
+     * - Formato brasileiro: 1.234,56
+     * - Formato padrão: 1234.56
+     * - Prefixo R$: "R$ 263,00", "-R$ 195,00", "R$263,00"
+     */
     public BigDecimal parsarDecimalBrasileiro(String str) {
         if (str == null || str.isBlank()) return null;
-        String limpo = str.trim().replace("\"", "").replace(" ", "").replace(" ", "");
+        // Remove aspas e espaços (inclusive espaço não-quebrável)
+        String limpo = str.trim().replace("\"", "").replace(" ", "").replace(" ", "");
         if (limpo.isEmpty()) return null;
+
+        // Preserva sinal negativo antes de remover prefixo R$
+        boolean negativo = limpo.startsWith("-");
+        // Remove prefixo R$ com ou sem sinal: "-R$263,00" → "263,00", "R$ 263,00" → "263,00"
+        limpo = limpo.replaceAll("(?i)-?R\\$\\s*", "").trim();
+        if (negativo && !limpo.startsWith("-")) limpo = "-" + limpo;
+
+        if (limpo.isEmpty()) return null;
+
         if (limpo.contains(",")) {
-            // 1.234,56 → 1234.56
+            // Formato brasileiro: 1.234,56 → 1234.56
             limpo = limpo.replace(".", "").replace(",", ".");
         }
         try {
@@ -168,7 +204,6 @@ public class ExtratoImportHelper {
                 razaoSocial != null ? razaoSocial.toUpperCase().trim() : "",
                 valor != null ? valor.toPlainString() : ""
         );
-        // Include bank account in hash only when specified, to keep backward compatibility
         String entrada = contaBancariaId != null ? base + "|" + contaBancariaId : base;
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");

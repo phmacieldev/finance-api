@@ -43,32 +43,43 @@ public class CsvImportService {
 
             // Localiza o cabeçalho real (ignora metadados do banco)
             int headerIdx = helper.encontrarHeaderRow(linhas, separador);
-            if (headerIdx < 0) {
-                throw new IllegalArgumentException(
-                        "Cabeçalho não encontrado. Verifique se o arquivo possui as colunas: Data, Valor.");
-            }
 
-            Map<String, Integer> colunas = mapearColunas(linhas[headerIdx], separador);
+            // Define mapeamento de colunas — com cabeçalho ou fallback posicional
+            Map<String, Integer> colunas = headerIdx >= 0
+                    ? mapearColunas(linhas[headerIdx], separador)
+                    : inferirColunasPositional(linhas, 0, separador);
 
-            for (int i = headerIdx + 1; i < linhas.length; i++) {
+            int startIdx = headerIdx >= 0 ? headerIdx + 1 : 0;
+
+            for (int i = startIdx; i < linhas.length; i++) {
                 String linha = linhas[i].trim();
                 if (linha.isBlank()) continue;
+
+                // Detecta nova seção com cabeçalho (ex: "Últimos Lançamentos" no Bradesco)
+                if (helper.isHeaderRow(linha, separador)) {
+                    colunas = mapearColunas(linha, separador);
+                    continue;
+                }
 
                 try {
                     String[] campos = dividirLinha(linha, separador);
 
-                    // Pula linhas de saldo/resumo que não são transações
+                    // Data inválida → linha de metadado/rodapé → ignorar silenciosamente
+                    String dataStr = obterCampo(campos, colunas, "data");
+                    LocalDate data;
+                    try {
+                        data = helper.parseData(dataStr);
+                    } catch (Exception e) {
+                        continue;
+                    }
+
+                    // Calcula valor: coluna única OU crédito/débito separados
+                    BigDecimal valor = calcularValor(campos, colunas);
+                    if (valor == null || valor.compareTo(BigDecimal.ZERO) == 0) continue;
+
                     String lancamento = obterCampo(campos, colunas, "tipo_pagamento");
                     if (helper.deveIgnorar(lancamento)) continue;
 
-                    // Pula linhas sem valor de transação
-                    String valorStr = obterCampo(campos, colunas, "valor");
-                    if (valorStr == null || valorStr.isBlank()) continue;
-
-                    BigDecimal valor = helper.parsarDecimalBrasileiro(valorStr);
-                    if (valor == null) continue;
-
-                    LocalDate data = helper.parseData(obterCampo(campos, colunas, "data"));
                     String razaoSocial = obterCampo(campos, colunas, "razao_social");
                     String cpfCnpj = obterCampo(campos, colunas, "cpf_cnpj");
                     String saldoStr = obterCampo(campos, colunas, "saldo");
@@ -99,14 +110,43 @@ public class CsvImportService {
         );
     }
 
-    // Detecta encoding: tenta UTF-8, fallback para ISO-8859-1 (Windows-1252)
+    // ─── Encoding ────────────────────────────────────────────────────────────────
+
+    /**
+     * Detecta encoding do arquivo:
+     * 1. Tenta UTF-8 e verifica mojibake (ex: "TransferÃªncia" — UTF-8 bytes lidos como Latin-1)
+     * 2. Verifica arquivo Latin-1 genuíno (bytes inválidos UTF-8 → caractere de substituição)
+     * 3. Fallback: UTF-8 puro
+     */
     private String detectarEncoding(byte[] bytes) {
         String utf8 = new String(bytes, StandardCharsets.UTF_8);
+
+        // Caso 1: arquivo UTF-8 mas com mojibake embutido (bug de exportação do banco)
+        // Ex: Bradesco app exporta "Ã©" no lugar de "é"
+        if (temMojibake(utf8)) {
+            try {
+                return new String(utf8.getBytes(StandardCharsets.ISO_8859_1), StandardCharsets.UTF_8);
+            } catch (Exception ignored) {}
+        }
+
+        // Caso 2: arquivo genuinamente Latin-1/Windows-1252
         long replacements = utf8.chars().filter(c -> c == '�').count();
         if (replacements > 2) {
             return new String(bytes, Charset.forName("ISO-8859-1"));
         }
+
         return utf8;
+    }
+
+    /**
+     * Detecta mojibake típico de português:
+     * Ã© = é, Ã£ = ã, Ãª = ê, Ã§ = ç, Ã³ = ó, Ã¡ = á, Ã  = à, Ãµ = õ, Ã­ = í
+     */
+    private boolean temMojibake(String s) {
+        return s.contains("Ã©") || s.contains("Ã£") || s.contains("Ãª")
+                || s.contains("Ã§") || s.contains("Ã³") || s.contains("Ã¡")
+                || s.contains("Ã ") || s.contains("Ãµ") || s.contains("Ã­")
+                || s.contains("Ã¢") || s.contains("Ã´") || s.contains("Ãº");
     }
 
     private char detectarSeparador(String conteudo) {
@@ -116,6 +156,8 @@ public class CsvImportService {
         return (pontoVirgulas >= virgulas) ? ';' : ',';
     }
 
+    // ─── Mapeamento de colunas ───────────────────────────────────────────────────
+
     private Map<String, Integer> mapearColunas(String headerLine, char separador) {
         String[] headers = dividirLinha(headerLine, separador);
         Map<String, Integer> mapa = new HashMap<>();
@@ -123,44 +165,67 @@ public class CsvImportService {
         for (int i = 0; i < headers.length; i++) {
             String h = helper.normalizarHeader(headers[i]);
 
-            // Data: campo começando com "data"
             if (!mapa.containsKey("data") && (h.equals("data") || h.startsWith("data_"))) {
                 mapa.put("data", i);
-            }
-            // Tipo/Lançamento: lancamento, historico, descricao, tipo, forma
-            else if (!mapa.containsKey("tipo_pagamento") && (
+            } else if (!mapa.containsKey("tipo_pagamento") && (
                     h.startsWith("lancamento") || h.equals("historico") ||
                     h.startsWith("descricao") || h.equals("tipo") ||
                     h.startsWith("tipo_pag") || h.startsWith("forma"))) {
                 mapa.put("tipo_pagamento", i);
-            }
-            // Razão Social: contém "razao" ou é "nome", "beneficiario", "favorecido"
-            else if (!mapa.containsKey("razao_social") && (
+            } else if (!mapa.containsKey("razao_social") && (
                     h.contains("razao") || h.equals("nome") ||
                     h.startsWith("beneficiario") || h.startsWith("favorecido"))) {
                 mapa.put("razao_social", i);
-            }
-            // CPF/CNPJ: contém "cpf" ou "cnpj"
-            else if (!mapa.containsKey("cpf_cnpj") && (h.contains("cpf") || h.contains("cnpj"))) {
+            } else if (!mapa.containsKey("cpf_cnpj") && (h.contains("cpf") || h.contains("cnpj"))) {
                 mapa.put("cpf_cnpj", i);
-            }
-            // Valor: começa com "valor" (cobre "valor", "valor_r", "valor_r$", etc.)
-            else if (!mapa.containsKey("valor") && h.startsWith("valor")) {
+            } else if (!mapa.containsKey("credito") && h.contains("credito")) {
+                // Ex: "Crédito (R$)" → "credito_r_" → contains("credito")
+                mapa.put("credito", i);
+            } else if (!mapa.containsKey("debito") && h.contains("debito")) {
+                // Ex: "Débito (R$)" → "debito_r_" → contains("debito")
+                mapa.put("debito", i);
+            } else if (!mapa.containsKey("valor") && h.startsWith("valor")) {
                 mapa.put("valor", i);
-            }
-            // Saldo: começa com "saldo" (cobre "saldo", "saldo_r", "saldo_r$", etc.)
-            else if (!mapa.containsKey("saldo") && h.startsWith("saldo")) {
+            } else if (!mapa.containsKey("saldo") && h.startsWith("saldo")) {
                 mapa.put("saldo", i);
             }
-            // ag_origem e outros campos são ignorados
         }
 
-        // Fallback posicional se não encontrou data + valor pelo cabeçalho
-        if (!mapa.containsKey("data") || !mapa.containsKey("valor")) {
-            mapa.clear();
+        return mapa;
+    }
+
+    /**
+     * Fallback posicional quando o arquivo não tem cabeçalho.
+     * Detecta automaticamente o número de colunas para cobrir diferentes formatos.
+     *
+     * Formato curto (≤5 cols) — ex: Bradesco app:
+     *   col 0: Data | col 1: Valor | col 2: Doc/UUID (ignorado) | col 3: Descrição
+     *
+     * Formato longo (≥6 cols) — ex: exportações com 7 colunas fixas:
+     *   col 0: Data | col 1: Tipo | col 2: Ag (ignorado) | col 3: Razão Social
+     *   col 4: CPF/CNPJ | col 5: Valor | col 6: Saldo
+     */
+    private Map<String, Integer> inferirColunasPositional(String[] linhas, int startIdx, char sep) {
+        Map<String, Integer> mapa = new HashMap<>();
+
+        int numCols = 4; // padrão conservador
+        for (int i = startIdx; i < Math.min(linhas.length, startIdx + 10); i++) {
+            String linha = linhas[i].trim();
+            if (!linha.isBlank()) {
+                numCols = dividirLinha(linha, sep).length;
+                break;
+            }
+        }
+
+        if (numCols <= 5) {
+            // Formato curto: Data, Valor, Doc/UUID, Descrição
+            mapa.put("data", 0);
+            mapa.put("valor", 1);
+            mapa.put("tipo_pagamento", 3);
+        } else {
+            // Formato longo: Data, Tipo, Ag, Razão Social, CPF/CNPJ, Valor, Saldo
             mapa.put("data", 0);
             mapa.put("tipo_pagamento", 1);
-            // posição 2 ignorada (ag/origem)
             mapa.put("razao_social", 3);
             mapa.put("cpf_cnpj", 4);
             mapa.put("valor", 5);
@@ -170,13 +235,35 @@ public class CsvImportService {
         return mapa;
     }
 
+    // ─── Cálculo de valor ────────────────────────────────────────────────────────
+
+    /**
+     * Calcula o valor da transação.
+     * Se o arquivo tem colunas separadas de Crédito/Débito (ex: Bradesco internet banking),
+     * crédito vira positivo e débito vira negativo.
+     * Caso contrário usa coluna "valor" diretamente.
+     */
+    private BigDecimal calcularValor(String[] campos, Map<String, Integer> colunas) {
+        if (colunas.containsKey("credito") || colunas.containsKey("debito")) {
+            BigDecimal credito = helper.parsarDecimalBrasileiro(obterCampo(campos, colunas, "credito"));
+            BigDecimal debito  = helper.parsarDecimalBrasileiro(obterCampo(campos, colunas, "debito"));
+
+            if (credito != null && credito.compareTo(BigDecimal.ZERO) != 0) return credito;
+            if (debito  != null && debito.compareTo(BigDecimal.ZERO)  != 0) return debito.negate();
+            return null;
+        }
+        return helper.parsarDecimalBrasileiro(obterCampo(campos, colunas, "valor"));
+    }
+
+    // ─── Utilitários ─────────────────────────────────────────────────────────────
+
     private String obterCampo(String[] campos, Map<String, Integer> colunas, String chave) {
         Integer idx = colunas.get(chave);
         if (idx == null || idx >= campos.length) return null;
         return campos[idx].trim().replace("\"", "");
     }
 
-    // Divide linha respeitando aspas
+    /** Divide linha respeitando campos entre aspas (RFC 4180). */
     private String[] dividirLinha(String linha, char sep) {
         List<String> campos = new ArrayList<>();
         StringBuilder campo = new StringBuilder();
