@@ -152,7 +152,7 @@ class AuthIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
-    void register_emailDuplicado_retorna409() throws Exception {
+    void register_emailDuplicado_senhaErrada_retorna409() throws Exception {
         registerTestUser();
         mvc.perform(post(BASE + "/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -161,9 +161,24 @@ class AuthIntegrationTest extends IntegrationTestBase {
                                 "cnpj", "99888777000100",
                                 "userName", "Maria",
                                 "email", TEST_EMAIL,
-                                "password", "senha123"
+                                "password", "senhaErrada99"
                         ))))
                 .andExpect(status().isConflict());
+    }
+
+    @Test
+    void register_emailDuplicado_senhaCorreta_criaNovaEmpresa_retorna201() throws Exception {
+        registerTestUser();
+        mvc.perform(post(BASE + "/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "enterpriseName", "Segunda Empresa",
+                                "cnpj", "99888777000100",
+                                "userName", "Maria",
+                                "email", TEST_EMAIL,
+                                "password", "senha123"
+                        ))))
+                .andExpect(status().isCreated());
     }
 
     // ── login ─────────────────────────────────────────────────────────────────
