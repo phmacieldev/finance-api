@@ -71,7 +71,8 @@ public class AuthService {
         if (tipo == TipoPessoa.JURIDICA) {
             String digits = dto.cnpj() != null ? dto.cnpj().replaceAll("[.\\-/]", "") : "";
             if (!new CnpjValidator().isValid(digits, null)) {
-                throw new ConflitoException("CNPJ inválido");
+                throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY, "CNPJ inválido");
             }
             if (enterpriseRepository.existsByCnpj(digits)) {
                 throw new ConflitoException("CNPJ já cadastrado: " + digits);
@@ -80,7 +81,8 @@ public class AuthService {
         } else {
             String digits = dto.cpf() != null ? dto.cpf().replaceAll("[.\\-]", "") : "";
             if (!new CpfValidator().isValid(digits, null)) {
-                throw new ConflitoException("CPF inválido");
+                throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY, "CPF inválido");
             }
             if (enterpriseRepository.existsByCpf(digits)) {
                 throw new ConflitoException("CPF já cadastrado: " + digits);
