@@ -45,10 +45,9 @@ public class DreService {
             Categoria cat = categorias.get(e.getCategoriaId());
             if (cat == null || cat.getDreCategoria() == null) continue;
 
-            BigDecimal valorAbs = e.getValor().abs();
-            somaPorDre.merge(cat.getDreCategoria(), valorAbs, BigDecimal::add);
+            somaPorDre.merge(cat.getDreCategoria(), e.getValor(), BigDecimal::add);
             valorPorCatDre.computeIfAbsent(cat.getDreCategoria(), k -> new LinkedHashMap<>())
-                    .merge(cat.getName(), valorAbs, BigDecimal::add);
+                    .merge(cat.getName(), e.getValor(), BigDecimal::add);
         }
 
         BigDecimal receitaBruta       = get(somaPorDre, DreCategoria.RECEITA_BRUTA);
@@ -93,7 +92,7 @@ public class DreService {
                                DreCategoria chave) {
         List<DreCategoriaTotalDTO> cats = valorPorCatDre.containsKey(chave)
                 ? valorPorCatDre.get(chave).entrySet().stream()
-                        .map(e -> new DreCategoriaTotalDTO(e.getKey(), e.getValue()))
+                        .map(e -> new DreCategoriaTotalDTO(e.getKey(), e.getValue().abs()))
                         .toList()
                 : List.of();
         return new DreLinhaDTO(label, valor, ehSubtotal, cats);
@@ -104,6 +103,6 @@ public class DreService {
     }
 
     private BigDecimal get(Map<DreCategoria, BigDecimal> mapa, DreCategoria chave) {
-        return mapa.getOrDefault(chave, BigDecimal.ZERO);
+        return mapa.getOrDefault(chave, BigDecimal.ZERO).abs();
     }
 }

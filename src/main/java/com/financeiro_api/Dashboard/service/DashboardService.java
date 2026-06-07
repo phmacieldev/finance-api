@@ -87,7 +87,7 @@ public class DashboardService {
                 : BigDecimal.ZERO;
 
         List<ExtratoResponseDTO> ultimosLancamentos = extratoRepository
-                .findTop5ByEnterpriseIdOrderByDataDescIdDesc(tenantId)
+                .findTop5ByEnterpriseId(tenantId, org.springframework.data.domain.PageRequest.of(0, 5))
                 .stream().map(ExtratoResponseDTO::from).toList();
 
         return new DashboardDTO(

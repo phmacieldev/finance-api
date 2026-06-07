@@ -153,11 +153,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
         if (realIp != null && !realIp.isBlank()) {
             return realIp.trim();
         }
-        // X-Forwarded-For como fallback — usamos o último IP da cadeia (mais confiável)
+        // X-Forwarded-For como fallback — usamos o primeiro IP da cadeia (o cliente original)
         String forwarded = request.getHeader("X-Forwarded-For");
         if (forwarded != null && !forwarded.isBlank()) {
             String[] parts = forwarded.split(",");
-            return parts[parts.length - 1].trim();
+            return parts[0].trim();
         }
         return request.getRemoteAddr();
     }

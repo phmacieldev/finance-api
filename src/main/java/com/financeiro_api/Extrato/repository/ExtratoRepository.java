@@ -11,6 +11,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 public interface ExtratoRepository extends JpaRepository<Extrato, UUID> {
@@ -24,6 +25,9 @@ public interface ExtratoRepository extends JpaRepository<Extrato, UUID> {
     Optional<Extrato> findByEnterpriseIdAndId(UUID enterpriseId, UUID id);
 
     boolean existsByEnterpriseIdAndImportHash(UUID enterpriseId, String importHash);
+
+    @Query("SELECT e.importHash FROM Extrato e WHERE e.enterpriseId = :enterpriseId")
+    Set<String> findHashesByEnterpriseId(@Param("enterpriseId") UUID enterpriseId);
 
     void deleteByEnterpriseIdAndImportBatchId(UUID enterpriseId, UUID importBatchId);
 
@@ -65,10 +69,31 @@ public interface ExtratoRepository extends JpaRepository<Extrato, UUID> {
             @Param("fim") LocalDate fim,
             @Param("razaoSocial") String razaoSocial);
 
+    @Query(value = """
+            SELECT e FROM Extrato e
+            WHERE e.enterpriseId = :tenantId
+              AND e.data BETWEEN :inicio AND :fim
+              AND (:razaoSocial IS NULL OR LOWER(e.razaoSocial) LIKE LOWER(CONCAT('%', :razaoSocial, '%')))
+            ORDER BY e.data ASC
+            """,
+           countQuery = """
+            SELECT COUNT(e) FROM Extrato e
+            WHERE e.enterpriseId = :tenantId
+              AND e.data BETWEEN :inicio AND :fim
+              AND (:razaoSocial IS NULL OR LOWER(e.razaoSocial) LIKE LOWER(CONCAT('%', :razaoSocial, '%')))
+            """)
+    Page<Extrato> buscarPorPeriodoPaginado(
+            @Param("tenantId") UUID tenantId,
+            @Param("inicio") LocalDate inicio,
+            @Param("fim") LocalDate fim,
+            @Param("razaoSocial") String razaoSocial,
+            Pageable pageable);
+
     @Query("SELECT COALESCE(SUM(e.valor), 0) FROM Extrato e WHERE e.enterpriseId = :enterpriseId")
     BigDecimal sumTodosByEnterpriseId(@Param("enterpriseId") UUID enterpriseId);
 
-    List<Extrato> findTop5ByEnterpriseIdOrderByDataDescIdDesc(UUID enterpriseId);
+    @Query("SELECT e FROM Extrato e WHERE e.enterpriseId = :enterpriseId ORDER BY e.data DESC, e.importadoEm DESC")
+    List<Extrato> findTop5ByEnterpriseId(@Param("enterpriseId") UUID enterpriseId, Pageable pageable);
 
     @Query(
         value = """

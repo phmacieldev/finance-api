@@ -139,14 +139,22 @@ public class CsvImportService {
     }
 
     /**
-     * Detecta mojibake típico de português:
-     * Ã© = é, Ã£ = ã, Ãª = ê, Ã§ = ç, Ã³ = ó, Ã¡ = á, Ã  = à, Ãµ = õ, Ã­ = í
+     * Detecta mojibake típico de português com pelo menos 2 ocorrências.
+     * Exigir ≥2 evita falso positivo quando UTF-8 legítimo contém acidentalmente
+     * uma das sequências de 2 bytes (ex: nome de empresa que começa com "Ã").
      */
     private boolean temMojibake(String s) {
-        return s.contains("Ã©") || s.contains("Ã£") || s.contains("Ãª")
-                || s.contains("Ã§") || s.contains("Ã³") || s.contains("Ã¡")
-                || s.contains("Ã ") || s.contains("Ãµ") || s.contains("Ã­")
-                || s.contains("Ã¢") || s.contains("Ã´") || s.contains("Ãº");
+        String[] padroes = { "Ã©", "Ã£", "Ãª", "Ã§", "Ã³", "Ã¡", "Ã ", "Ãµ", "Ã­", "Ã¢", "Ã´", "Ãº" };
+        int ocorrencias = 0;
+        for (String p : padroes) {
+            int idx = 0;
+            while ((idx = s.indexOf(p, idx)) != -1) {
+                ocorrencias++;
+                if (ocorrencias >= 2) return true;
+                idx += p.length();
+            }
+        }
+        return false;
     }
 
     private char detectarSeparador(String conteudo) {

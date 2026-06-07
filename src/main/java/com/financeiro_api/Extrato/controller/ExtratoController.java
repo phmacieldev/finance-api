@@ -100,15 +100,8 @@ public class ExtratoController {
         size = Math.min(size, 200);
 
         if (inicio != null && fim != null) {
-            List<ExtratoResponseDTO> items = razaoSocial != null
-                    ? service.buscarComFiltro(inicio, fim, razaoSocial)
-                    : service.listarPorPeriodo(inicio, fim);
-            int start = Math.min(page * size, items.size());
-            int end = Math.min(start + size, items.size());
-            return new org.springframework.data.domain.PageImpl<>(
-                    items.subList(start, end),
-                    PageRequest.of(page, size),
-                    items.size());
+            return service.listarPorPeriodoPaginado(inicio, fim, razaoSocial,
+                    PageRequest.of(page, size, Sort.by("data").ascending()));
         }
 
         int m = mes != null ? mes : LocalDate.now().getMonthValue();

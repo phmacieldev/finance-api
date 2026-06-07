@@ -20,7 +20,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     Optional<User> findByIdAndEnterprise_Id(UUID id, UUID enterpriseId);
 
-    Optional<User> findByTokenVerificacao(String token);
+    @Query("SELECT u FROM User u LEFT JOIN FETCH u.enterprise WHERE u.tokenVerificacao = :token")
+    Optional<User> findByTokenVerificacao(@Param("token") String token);
 
     Optional<User> findByTokenResetSenha(String token);
 
