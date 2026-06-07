@@ -14,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -42,6 +43,7 @@ public class JwtService {
     }
 
     public String gerarToken(String email, UUID userId, UUID enterpriseId, String role) {
+        Objects.requireNonNull(userId, "userId não pode ser nulo ao gerar JWT");
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", userId.toString());
         claims.put("role", role);

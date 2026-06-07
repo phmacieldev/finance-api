@@ -6,15 +6,20 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Rate limiting por IP nos endpoints de autenticação sensíveis.
@@ -25,15 +30,39 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * O IP é lido do header X-Real-IP (setado pelo proxy/load balancer),
  * com fallback para X-Forwarded-For e por último o IP direto da conexão.
+ *
+ * Limpeza de memória: entradas não acessadas há mais de 2 minutos são removidas
+ * a cada 30 minutos via @Scheduled (evita memory leak em produção).
  */
 @Component
 @Order(1)
 public class RateLimitFilter extends OncePerRequestFilter {
 
-    private final Map<String, Bucket> loginBuckets      = new ConcurrentHashMap<>();
-    private final Map<String, Bucket> registerBuckets   = new ConcurrentHashMap<>();
-    private final Map<String, Bucket> esqueciSenhaBuckets = new ConcurrentHashMap<>();
-    private final Map<String, Bucket> reenviarBuckets   = new ConcurrentHashMap<>();
+    private static final Logger log = LoggerFactory.getLogger(RateLimitFilter.class);
+
+    /** Tempo máximo de inatividade antes de remover entrada da memória (2 minutos = 1 janela de rate limit + margem) */
+    private static final long IDLE_EXPIRY_MS = Duration.ofMinutes(2).toMillis();
+
+    /** Wrapper que mantém o bucket junto com o timestamp do último acesso */
+    private record BucketEntry(Bucket bucket, AtomicLong lastAccessMs) {
+        BucketEntry(Bucket bucket) {
+            this(bucket, new AtomicLong(System.currentTimeMillis()));
+        }
+
+        Bucket touch() {
+            lastAccessMs.set(System.currentTimeMillis());
+            return bucket;
+        }
+
+        boolean isExpired() {
+            return System.currentTimeMillis() - lastAccessMs.get() > IDLE_EXPIRY_MS;
+        }
+    }
+
+    private final Map<String, BucketEntry> loginBuckets        = new ConcurrentHashMap<>();
+    private final Map<String, BucketEntry> registerBuckets     = new ConcurrentHashMap<>();
+    private final Map<String, BucketEntry> esqueciSenhaBuckets = new ConcurrentHashMap<>();
+    private final Map<String, BucketEntry> reenviarBuckets     = new ConcurrentHashMap<>();
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -43,28 +72,63 @@ public class RateLimitFilter extends OncePerRequestFilter {
         String ip   = getClientIp(request);
 
         if (path.endsWith("/auth/login")) {
-            if (!loginBuckets.computeIfAbsent(ip, k -> newBucket(10)).tryConsume(1)) {
+            if (!getBucket(loginBuckets, ip, 10).tryConsume(1)) {
                 rejectRequest(response, "Muitas tentativas de login. Aguarde 1 minuto.");
                 return;
             }
         } else if (path.endsWith("/auth/register")) {
-            if (!registerBuckets.computeIfAbsent(ip, k -> newBucket(5)).tryConsume(1)) {
+            if (!getBucket(registerBuckets, ip, 5).tryConsume(1)) {
                 rejectRequest(response, "Muitos cadastros do mesmo IP. Aguarde 1 minuto.");
                 return;
             }
         } else if (path.endsWith("/auth/esqueci-senha")) {
-            if (!esqueciSenhaBuckets.computeIfAbsent(ip, k -> newBucket(5)).tryConsume(1)) {
+            if (!getBucket(esqueciSenhaBuckets, ip, 5).tryConsume(1)) {
                 rejectRequest(response, "Muitas solicitações de recuperação de senha. Aguarde 1 minuto.");
                 return;
             }
         } else if (path.endsWith("/auth/reenviar-verificacao")) {
-            if (!reenviarBuckets.computeIfAbsent(ip, k -> newBucket(5)).tryConsume(1)) {
+            if (!getBucket(reenviarBuckets, ip, 5).tryConsume(1)) {
                 rejectRequest(response, "Muitos reenvios solicitados. Aguarde 1 minuto.");
                 return;
             }
         }
 
         chain.doFilter(request, response);
+    }
+
+    private Bucket getBucket(Map<String, BucketEntry> map, String ip, int requestsPerMinute) {
+        return map.computeIfAbsent(ip, k -> new BucketEntry(newBucket(requestsPerMinute))).touch();
+    }
+
+    /**
+     * Limpeza de entradas inativas a cada 30 minutos.
+     * Remove IPs que não fizeram requests nas últimas 2 janelas de rate-limit.
+     */
+    @Scheduled(fixedDelay = 1_800_000)
+    public void limparEntradasExpiradas() {
+        int antes = loginBuckets.size() + registerBuckets.size()
+                + esqueciSenhaBuckets.size() + reenviarBuckets.size();
+
+        evictExpired(loginBuckets);
+        evictExpired(registerBuckets);
+        evictExpired(esqueciSenhaBuckets);
+        evictExpired(reenviarBuckets);
+
+        int depois = loginBuckets.size() + registerBuckets.size()
+                + esqueciSenhaBuckets.size() + reenviarBuckets.size();
+
+        if (antes > depois) {
+            log.debug("RateLimitFilter: removidas {} entradas expiradas ({} restantes)", antes - depois, depois);
+        }
+    }
+
+    private void evictExpired(Map<String, BucketEntry> map) {
+        Iterator<Map.Entry<String, BucketEntry>> it = map.entrySet().iterator();
+        while (it.hasNext()) {
+            if (it.next().getValue().isExpired()) {
+                it.remove();
+            }
+        }
     }
 
     private Bucket newBucket(int requestsPerMinute) {
