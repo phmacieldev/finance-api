@@ -198,8 +198,8 @@ public class AdminService {
     public List<AdminUserDTO> listarUsuariosEmpresa(UUID enterpriseId) {
         enterpriseRepository.findById(enterpriseId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Empresa não encontrada: " + enterpriseId));
-        return userRepository.findAllByEnterprise_IdOrderByNameAsc(enterpriseId)
-                .stream().map(AdminUserDTO::from).toList();
+        return userEnterpriseRepository.findAllByEnterpriseIdFetchUser(enterpriseId)
+                .stream().map(ue -> AdminUserDTO.from(ue.getUser())).toList();
     }
 
     @Transactional
