@@ -29,7 +29,12 @@ public class RefreshTokenService {
 
     @Transactional
     public RefreshToken criar(User user, UUID enterpriseId) {
-        repository.revokeAllByUserId(user.getId());
+        // Revoga apenas o token da empresa alvo, preservando sessões em outras empresas
+        if (enterpriseId != null) {
+            repository.revokeByUserIdAndEnterpriseId(user.getId(), enterpriseId);
+        } else {
+            repository.revokeByUserIdAndNoEnterprise(user.getId());
+        }
 
         byte[] bytes = new byte[48];
         SECURE_RANDOM.nextBytes(bytes);

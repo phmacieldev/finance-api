@@ -94,7 +94,7 @@ public class AuthService {
                     .orElseThrow(() -> new ConflitoException("E-mail já cadastrado: " + dto.email()));
 
             if (!passwordEncoder.matches(dto.password(), user.getPassword())) {
-                throw new ConflitoException("Senha incorreta para o e-mail informado");
+                throw new BadCredentialsException("Credenciais inválidas");
             }
 
             Enterprise enterprise = enterpriseRepository.save(
