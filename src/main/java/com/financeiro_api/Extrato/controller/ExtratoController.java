@@ -97,6 +97,8 @@ public class ExtratoController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size) {
 
+        size = Math.min(size, 200);
+
         if (inicio != null && fim != null) {
             List<ExtratoResponseDTO> items = razaoSocial != null
                     ? service.buscarComFiltro(inicio, fim, razaoSocial)

@@ -50,11 +50,11 @@ public class EmailService {
     }
 
     @Async
-    public void notificarNovaEmpresa(String empresaNome, String empresaCnpj, String responsavelEmail) {
+    public void notificarNovaEmpresa(String empresaNome, String identificador, String responsavelEmail) {
         if (!canSend()) {
             log.info("=== NOVA EMPRESA CADASTRADA (MAIL_USERNAME não configurado) ===");
-            log.info("Empresa: {} | CNPJ: {} | Responsável: {}",
-                    empresaNome, LogMask.cnpj(empresaCnpj), LogMask.email(responsavelEmail));
+            log.info("Empresa: {} | Identificador: {} | Responsável: {}",
+                    empresaNome, LogMask.cnpj(identificador), LogMask.email(responsavelEmail));
             return;
         }
         send(adminEmail,
@@ -63,11 +63,11 @@ public class EmailService {
                 <p>Uma nova empresa se cadastrou e aguarda aprovação.</p>
                 <ul>
                   <li><strong>Empresa:</strong> %s</li>
-                  <li><strong>CNPJ:</strong> %s</li>
+                  <li><strong>CNPJ/CPF:</strong> %s</li>
                   <li><strong>Responsável:</strong> %s</li>
                 </ul>
                 <p>Acesse o painel administrativo para aprovar ou rejeitar.</p>
-                """.formatted(empresaNome, empresaCnpj, responsavelEmail));
+                """.formatted(empresaNome, identificador != null ? identificador : "—", responsavelEmail));
     }
 
     @Async

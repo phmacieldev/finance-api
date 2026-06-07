@@ -3,7 +3,10 @@ package com.financeiro_api.Auth.service;
 import com.financeiro_api.Auth.domain.RefreshToken;
 import com.financeiro_api.Auth.repository.RefreshTokenRepository;
 import com.financeiro_api.Users.domain.User;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +19,7 @@ import java.util.UUID;
 @Service
 public class RefreshTokenService {
 
+    private static final Logger log = LoggerFactory.getLogger(RefreshTokenService.class);
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private final RefreshTokenRepository repository;
@@ -76,5 +80,16 @@ public class RefreshTokenService {
     @Transactional
     public void revogarTodos(UUID userId) {
         repository.revokeAllByUserId(userId);
+    }
+
+    /**
+     * Limpeza diária de tokens revogados e expirados — evita acúmulo infinito na tabela.
+     * Roda todo dia à meia-noite (horário UTC).
+     */
+    @Scheduled(cron = "0 0 0 * * *")
+    @Transactional
+    public void limparTokensExpirados() {
+        repository.deleteExpiredAndRevoked(LocalDateTime.now());
+        log.debug("RefreshToken: limpeza de tokens expirados/revogados concluída");
     }
 }

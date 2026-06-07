@@ -156,7 +156,9 @@ public class AuthService {
                 .build());
 
         emailService.enviarVerificacaoEmail(user.getEmail(), token);
-        emailService.notificarNovaEmpresa(enterprise.getName(), enterprise.getCnpj(), user.getEmail());
+        // getCnpj() pode ser null para PF — usa CPF como fallback
+        emailService.notificarNovaEmpresa(enterprise.getName(),
+                cnpj != null ? cnpj : cpf, user.getEmail());
 
         TenantContext.setUserId(user.getId());
         TenantContext.setEmail(user.getEmail());

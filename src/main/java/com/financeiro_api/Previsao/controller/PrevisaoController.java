@@ -31,6 +31,7 @@ public class PrevisaoController {
             @RequestParam(required = false) TipoPrevisao tipo,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "100") int size) {
+        size = Math.min(size, 200);
         return service.listarPaginado(tipo, PageRequest.of(page, size, Sort.by("dataInicio").descending()));
     }
 
