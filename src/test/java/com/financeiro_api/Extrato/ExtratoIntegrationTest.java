@@ -98,4 +98,136 @@ class ExtratoIntegrationTest extends TenantIntegrationTestBase {
                         .content(json(Map.of("categoriaId", categoriaId))))
                 .andExpect(status().is4xxClientError());
     }
+
+    @Test
+    void criarManual_retorna201() throws Exception {
+        mvc.perform(post(BASE)
+                        .header("Authorization", "Bearer " + ceoToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "data", "2025-06-10",
+                                "descricao", "Venda manual",
+                                "valor", "1500.00",
+                                "tipo", "RECEITA"
+                        ))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.valor").value(1500.0));
+    }
+
+    @Test
+    void editar_lancamento_retorna200() throws Exception {
+        // criar
+        var criar = mvc.perform(post(BASE)
+                        .header("Authorization", "Bearer " + ceoToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "data", "2025-06-10",
+                                "descricao", "Despesa original",
+                                "valor", "300.00",
+                                "tipo", "DESPESA"
+                        ))))
+                .andReturn();
+        var criado = MAPPER.readValue(criar.getResponse().getContentAsString(), Map.class);
+        String id = (String) criado.get("id");
+
+        // editar
+        mvc.perform(patch(BASE + "/" + id)
+                        .header("Authorization", "Bearer " + ceoToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of("descricao", "Despesa editada"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.razaoSocial").value("Despesa editada"));
+    }
+
+    @Test
+    void deletar_lancamento_retorna204() throws Exception {
+        var criar = mvc.perform(post(BASE)
+                        .header("Authorization", "Bearer " + ceoToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json(Map.of(
+                                "data", "2025-06-11",
+                                "descricao", "Para deletar",
+                                "valor", "100.00",
+                                "tipo", "DESPESA"
+                        ))))
+                .andReturn();
+        var criado = MAPPER.readValue(criar.getResponse().getContentAsString(), Map.class);
+        String id = (String) criado.get("id");
+
+        mvc.perform(delete(BASE + "/" + id)
+                        .header("Authorization", "Bearer " + ceoToken))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void importarCsv_duplicata_naoImportaNovamente() throws Exception {
+        String csv = "Data;Lançamento;Valor;Saldo\n" +
+                "10/05/2025;Duplicata A;2000,00;2000,00\n" +
+                "11/05/2025;Duplicata B;-500,00;1500,00\n";
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "dedup.csv", "text/csv", csv.getBytes());
+
+        // primeira importação — 2 importados
+        mvc.perform(multipart(BASE + "/importar")
+                        .file(file)
+                        .header("Authorization", "Bearer " + ceoToken))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.importados").value(2))
+                .andExpect(jsonPath("$.duplicatasIgnoradas").value(0));
+
+        // segunda importação com o mesmo arquivo — 2 duplicatas
+        MockMultipartFile file2 = new MockMultipartFile(
+                "file", "dedup.csv", "text/csv", csv.getBytes());
+
+        mvc.perform(multipart(BASE + "/importar")
+                        .file(file2)
+                        .header("Authorization", "Bearer " + ceoToken))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.importados").value(0))
+                .andExpect(jsonPath("$.duplicatasIgnoradas").value(2));
+    }
+
+    @Test
+    void semCategoria_retornaLancamentosSemCategoria() throws Exception {
+        String csv = "Data;Lançamento;Valor;Saldo\n" +
+                "01/07/2025;Receita sem cat;1000,00;1000,00\n";
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "semcat.csv", "text/csv", csv.getBytes());
+
+        mvc.perform(multipart(BASE + "/importar")
+                .file(file)
+                .header("Authorization", "Bearer " + ceoToken));
+
+        mvc.perform(get(BASE + "/sem-categoria?mes=7&ano=2025")
+                        .header("Authorization", "Bearer " + ceoToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$.length()").value(1));
+    }
+
+    @Test
+    void cancelarLote_retorna204ERemoveItens() throws Exception {
+        String csv = "Data;Lançamento;Valor;Saldo\n" +
+                "05/08/2025;Item lote;800,00;800,00\n";
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "lote.csv", "text/csv", csv.getBytes());
+
+        var importar = mvc.perform(multipart(BASE + "/importar")
+                        .file(file)
+                        .header("Authorization", "Bearer " + ceoToken))
+                .andReturn();
+        var resultado = MAPPER.readValue(importar.getResponse().getContentAsString(), Map.class);
+        String batchId = (String) resultado.get("batchId");
+
+        mvc.perform(delete(BASE + "/batch/" + batchId)
+                        .header("Authorization", "Bearer " + ceoToken))
+                .andExpect(status().isNoContent());
+
+        // após cancelar, extrato do mês deve estar vazio
+        mvc.perform(get(BASE + "?mes=8&ano=2025")
+                        .header("Authorization", "Bearer " + ceoToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(0));
+    }
 }

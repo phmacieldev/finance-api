@@ -9,7 +9,9 @@ import com.financeiro_api.shared.exception.ValidacaoException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -78,6 +80,12 @@ public class ApiExceptionHandler {
     @ResponseStatus(HttpStatus.FORBIDDEN)
     public ErroResponse contaDesabilitada(DisabledException ex) {
         return new ErroResponse(403, ex.getMessage());
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ErroResponse> responseStatus(ResponseStatusException ex) {
+        int code = ex.getStatusCode().value();
+        return ResponseEntity.status(code).body(new ErroResponse(code, ex.getReason()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
