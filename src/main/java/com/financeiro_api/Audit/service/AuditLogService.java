@@ -5,15 +5,19 @@ import com.financeiro_api.Audit.domain.AuditLog;
 import com.financeiro_api.Audit.dto.AuditLogDTO;
 import com.financeiro_api.Audit.repository.AuditLogRepository;
 import com.financeiro_api.shared.TenantContext;
+import jakarta.persistence.criteria.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -51,7 +55,17 @@ public class AuditLogService {
     @Transactional(readOnly = true)
     public Page<AuditLogDTO> listar(AuditAction action, UUID userId, UUID enterpriseId,
                                     LocalDateTime from, LocalDateTime to, Pageable pageable) {
-        return repository.buscarComFiltros(action, userId, enterpriseId, from, to, pageable)
-                .map(AuditLogDTO::from);
+        Specification<AuditLog> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (action != null)       predicates.add(cb.equal(root.get("action"), action));
+            if (userId != null)       predicates.add(cb.equal(root.get("userId"), userId));
+            if (enterpriseId != null) predicates.add(cb.equal(root.get("enterpriseId"), enterpriseId));
+            if (from != null)         predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), from));
+            if (to != null)           predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), to));
+            assert query != null;
+            query.orderBy(cb.desc(root.get("createdAt")));
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+        return repository.findAll(spec, pageable).map(AuditLogDTO::from);
     }
 }
