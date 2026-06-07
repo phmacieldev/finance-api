@@ -20,4 +20,7 @@ public interface UserEnterpriseRepository extends JpaRepository<UserEnterprise, 
     Optional<UserEnterprise> findByUserIdAndEnterpriseIdFetchEnterprise(@Param("userId") UUID userId, @Param("enterpriseId") UUID enterpriseId);
 
     boolean existsByUser_IdAndEnterprise_Id(UUID userId, UUID enterpriseId);
+
+    @Query("SELECT ue FROM UserEnterprise ue JOIN FETCH ue.user WHERE ue.enterprise.id = :enterpriseId ORDER BY ue.user.name ASC")
+    List<UserEnterprise> findAllByEnterpriseIdFetchUser(@Param("enterpriseId") UUID enterpriseId);
 }
