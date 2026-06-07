@@ -58,6 +58,13 @@ public class ExtratoService {
     }
 
     @Transactional(readOnly = true)
+    public Page<ExtratoResponseDTO> listarPorPeriodoPaginado(LocalDate inicio, LocalDate fim,
+                                                              String razaoSocial, Pageable pageable) {
+        return repository.buscarPorPeriodoPaginado(TenantContext.get(), inicio, fim, razaoSocial, pageable)
+                .map(ExtratoResponseDTO::from);
+    }
+
+    @Transactional(readOnly = true)
     public Page<ExtratoResponseDTO> listarPaginado(int mes, int ano, UUID categoriaId, UUID contaBancariaId, String tipo, Pageable pageable) {
         return repository.buscarPorMesAnoComFiltros(TenantContext.get(), mes, ano, categoriaId, contaBancariaId, tipo, pageable)
                 .map(ExtratoResponseDTO::from);

@@ -78,24 +78,37 @@ public class ExtratoImportHelper {
     }
 
     public ExtratoImportResultDTO salvarLote(List<Extrato> extratos, UUID tenantId) {
-        UUID batchId = extratos.isEmpty() ? null : UUID.randomUUID();
-        int importados = 0, duplicatas = 0, erros = 0;
+        if (extratos.isEmpty()) {
+            return new ExtratoImportResultDTO(0, 0, 0, null, "Importados: 0 | Duplicatas ignoradas: 0 | Erros: 0");
+        }
 
+        UUID batchId = UUID.randomUUID();
+
+        Set<String> hashesExistentes = repository.findHashesByEnterpriseId(tenantId);
+
+        List<Extrato> novos = new java.util.ArrayList<>();
+        int duplicatas = 0;
         for (Extrato e : extratos) {
-            try {
-                if (repository.existsByEnterpriseIdAndImportHash(tenantId, e.getImportHash())) {
-                    duplicatas++;
-                } else {
-                    e.setImportBatchId(batchId);
-                    repository.save(e);
-                    importados++;
-                }
-            } catch (Exception ex) {
-                erros++;
+            if (hashesExistentes.contains(e.getImportHash())) {
+                duplicatas++;
+            } else {
+                e.setImportBatchId(batchId);
+                novos.add(e);
             }
         }
 
-        String batchIdStr = (importados > 0 && batchId != null) ? batchId.toString() : null;
+        int erros = 0;
+        int importados = 0;
+        if (!novos.isEmpty()) {
+            try {
+                repository.saveAll(novos);
+                importados = novos.size();
+            } catch (Exception ex) {
+                erros = novos.size();
+            }
+        }
+
+        String batchIdStr = importados > 0 ? batchId.toString() : null;
         if (importados > 0) {
             auditLogService.log(AuditAction.EXTRATO_IMPORTED, "Extrato", batchIdStr);
         }
@@ -198,13 +211,14 @@ public class ExtratoImportHelper {
     }
 
     public String gerarHash(LocalDate data, String tipo, String razaoSocial, BigDecimal valor, UUID contaBancariaId) {
-        String base = String.join("|",
+        // Hash baseado apenas no conteúdo da transação — contaBancariaId é metadado atribuído depois.
+        // Isso garante que o mesmo extrato importado com/sem conta não gere duplicatas.
+        String entrada = String.join("|",
                 data != null ? data.toString() : "",
                 tipo != null ? tipo.toUpperCase().trim() : "",
                 razaoSocial != null ? razaoSocial.toUpperCase().trim() : "",
                 valor != null ? valor.toPlainString() : ""
         );
-        String entrada = contaBancariaId != null ? base + "|" + contaBancariaId : base;
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
             byte[] hash = md.digest(entrada.getBytes(StandardCharsets.UTF_8));
