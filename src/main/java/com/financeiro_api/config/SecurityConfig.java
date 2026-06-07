@@ -70,8 +70,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/register", "/api/v1/auth/login",
                                 "/api/v1/auth/verificar-email", "/api/v1/auth/reenviar-verificacao",
                                 "/api/v1/auth/esqueci-senha", "/api/v1/auth/resetar-senha",
-                                "/api/v1/auth/refresh").permitAll()
-                        .requestMatchers("/api/v1/auth/logout").authenticated()
+                                "/api/v1/auth/refresh", "/api/v1/auth/logout").permitAll()
                         .requestMatchers("/api/v1/auth/switch-empresa/**").authenticated()
                         .requestMatchers("/api/v1/admin/**").hasRole("PLATFORM_ADMIN")
                         .requestMatchers("/api/v1/audit-logs", "/api/v1/audit-logs/**").hasRole("PLATFORM_ADMIN")
